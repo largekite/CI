@@ -1,3 +1,4 @@
+import { fmtAsOf } from '@/app/lib/fmt';
 import SentimentPill from './SentimentPill';
 import { getSentimentFull } from '@/app/lib/sentiment';
 export default async function MarketStatsRow(){
