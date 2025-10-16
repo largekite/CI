@@ -66,3 +66,18 @@ a:hover { text-decoration: underline; }
 .btn.primary { background: var(--brand); color:#fff; border-color: transparent; }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
 .badges span { background:#eef2ff; border-color:#c7d2fe; color:#334155; }
+
+
+/* Interactivity guards */
+form, label, input, textarea, button { pointer-events: auto; }
+input, textarea { background: #fff; color: var(--ink); }
+
+
+/* Floating mobile nav */
+.floating-nav { position: fixed; right: 16px; bottom: 16px; display: none; gap: 10px; z-index: 50; }
+.fab { width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 800; box-shadow: 0 6px 20px rgba(0,0,0,.12); display:flex; align-items:center; justify-content:center; }
+.fab:hover { transform: translateY(-1px); }
+@media (max-width: 768px) {
+  .floating-nav { display: flex; }
+  .footer .btn, .footer .ghost { display: none; } /* hide footer nav buttons on mobile */
+}

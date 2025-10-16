@@ -1,6 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import BackButtons from './components/BackButtons';
+import FloatingNav from './components/FloatingNav';
+import { BRAND_LEGAL } from './lib/brand';
 
 export const metadata: Metadata = {
   title: 'LargeKiteCapitalIntelligence — Independent Finance & Intelligence Consulting',
@@ -12,9 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        <FloatingNav />
         <footer className="footer">
           <BackButtons />
-          <div className="fineprint">© {new Date().getFullYear()} LargeKiteCapitalIntelligence LLC</div>
+          <div className="fineprint">© {new Date().getFullYear()} {BRAND_LEGAL}</div>
         </footer>
       </body>
     </html>

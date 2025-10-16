@@ -66,6 +66,6 @@ export default function Home(){
         <p className="note">We deliver formal memos, spreadsheets, and a live review—not just dashboards.</p>
       </Section>
     </main>
-    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence LLC LLC LLC</div></footer>
+    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence</div></footer>
   </>);
 }
