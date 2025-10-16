@@ -1,2 +1,34 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { fmtAsOf } from '@/app/lib/fmt';
-'use client';import { useEffect, useState } from 'react'; export default function MarketSentiment(){ const [data,setData]=useState(null); useEffect(()=>{ fetch('/api/sentiment').then(r=>r.json()).then(setData).catch(()=>{}); },[]); return (<main className="section"><div className="eyebrow">Market dashboard</div><h1 className="h2">Market Sentiment</h1><p className="tiny">Educational heuristic only. Not investment advice.</p>{!data && <p className="content">Loading…</p>}{data && (<div className="card" style={{textAlign:'center'}}><div className="eyebrow">Overall</div><div style={{fontSize:42,fontWeight:800}}>{data.status.label}</div><div className="tiny">Heat: {data.status.heat}/100</div><div className="tiny">As of: {fmtAsOf(data.asOf as any)}</div></div>)}</main>); }
+
+export default function MarketSentiment() {
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/sentiment')
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  return (
+    <main className="section">
+      <div className="eyebrow">Market dashboard</div>
+      <h1 className="h2">Market Sentiment</h1>
+      <p className="tiny">Educational heuristic only. Not investment advice.</p>
+
+      {!data && <p className="content">Loading…</p>}
+
+      {data && (
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div className="eyebrow">Overall</div>
+          <div style={{ fontSize: 42, fontWeight: 800 }}>{data.status.label}</div>
+          <div className="tiny">Heat: {data.status.heat}/100</div>
+          <div className="tiny">As of: {fmtAsOf(data.asOf as number)}</div>
+        </div>
+      )}
+    </main>
+  );
+}
