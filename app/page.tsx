@@ -8,7 +8,7 @@ function Section({ id, title, eyebrow, children }:{ id?:string; title:string; ey
 export default function Home(){
   return (<>
     <header className="nav">
-      <div className="brand">LargeKiteCapitalIntelligence <span>LLC</span></div>
+      <div className="brand">LargeKiteCapitalIntelligence</div>
       <nav className="links">
         <a href="/services">Services</a>
         <a href="#method">Method</a>
@@ -32,6 +32,31 @@ export default function Home(){
         </div>
       </section>
       <MarketStatsRow />
+      <section id="method" className="section">
+        <div className="eyebrow">How we work</div>
+        <h2 className="h2">Method</h2>
+        <div className="content">
+          <ol className="steps">
+            <li>Discovery: define objectives, constraints, and risk budget.</li>
+            <li>Research: human-led due diligence; AI speeds data pulls only.</li>
+            <li>Modeling: scenarios, taxes, and drawdowns; share assumptions.</li>
+            <li>Decision: memo, spreadsheet, and live review.</li>
+          </ol>
+        </div>
+      </section>
+
+      
+      <section id="cases" className="section">
+        <div className="eyebrow">Snapshots</div>
+        <h2 className="h2">Case Snapshots</h2>
+        <div className="cases">
+          <div className="case"><h3>Public markets IPS</h3><p>Rebuilt a client policy with risk bands and tax-aware rebalancing.</p></div>
+          <div className="case"><h3>Real estate timing</h3><p>Modeled buy-vs-rent and fixed vs ARM with rate paths.</p></div>
+          <div className="case"><h3>Manager screen</h3><p>Compared factor tilts, costs, and persistence across ETFs.</p></div>
+        </div>
+        <p className="disclaimer">Examples are illustrative; not investment advice.</p>
+      </section>
+
       <Section id="services" eyebrow="What we do" title="Finance services with measurable outcomes">
         <div className="cards">
           <div className="card"><h3>Portfolio Strategy</h3><p>Asset allocation, risk budgeting, tax-aware rebalancing, IPS drafting.</p></div>
@@ -41,6 +66,6 @@ export default function Home(){
         <p className="note">We deliver formal memos, spreadsheets, and a live review—not just dashboards.</p>
       </Section>
     </main>
-    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence LLC LLC</div></footer>
+    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence LLC LLC LLC</div></footer>
   </>);
 }
