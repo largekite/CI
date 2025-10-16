@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
 
-export const metadata = { title: 'Insights — LargeKite Capital' };
+export const metadata = { title: 'Insights — LargeKiteCapitalIntelligence LLC' };
 
 function safeStringDate(d: any): string {
   try {

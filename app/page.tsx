@@ -8,7 +8,7 @@ function Section({ id, title, eyebrow, children }:{ id?:string; title:string; ey
 export default function Home(){
   return (<>
     <header className="nav">
-      <div className="brand">LargeKite<span>Capital</span></div>
+      <div className="brand">LargeKiteCapitalIntelligence <span>LLC</span></div>
       <nav className="links">
         <a href="/services">Services</a>
         <a href="#method">Method</a>
@@ -41,6 +41,6 @@ export default function Home(){
         <p className="note">We deliver formal memos, spreadsheets, and a live review—not just dashboards.</p>
       </Section>
     </main>
-    <footer className="footer"><div>© {new Date().getFullYear()} LargeKite Capital LLC</div></footer>
+    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence LLC LLC</div></footer>
   </>);
 }

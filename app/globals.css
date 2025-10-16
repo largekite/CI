@@ -1,4 +1,12 @@
-:root { --bg:#0f1115; --card:#151823; --ink:#e9eefc; --muted:#b7c0d6; --brand:#6aa5ff; --accent:#7cf0c9; --line:#242938; }
+:root {
+  --bg:#f7f8fc;
+  --card:#ffffff;
+  --ink:#0a0d14;
+  --muted:#475569;
+  --brand:#2b6cf6;
+  --accent:#0f766e;
+  --line:#e5e7eb;
+}
 * { box-sizing: border-box; }
 html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'; }
 a { color: var(--accent); text-decoration: none; }
@@ -47,3 +55,14 @@ input, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid 
 .pill.hot { background:#1faa74; color:#081510; border-color: transparent; }
 .pill.cool { background:#3a6ff2; color:#0a0f1f; border-color: transparent; }
 .pill.neutral { background:#c7a534; color:#1a1403; border-color: transparent; }
+
+
+/* Light mode tweaks */
+.nav { background: rgba(255,255,255,.85); border-bottom:1px solid var(--line); }
+.hero { border-bottom:1px solid var(--line); }
+.card { background: var(--card); border:1px solid var(--line); }
+a { color:#2563eb; }
+a:hover { text-decoration: underline; }
+.btn.primary { background: var(--brand); color:#fff; border-color: transparent; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.badges span { background:#eef2ff; border-color:#c7d2fe; color:#334155; }
