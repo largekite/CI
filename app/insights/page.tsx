@@ -10,13 +10,10 @@ export async function generateStaticParams() {
   try {
     const dir = path.join(process.cwd(), 'content/insights');
     if (!fs.existsSync(dir)) return [];
-
     return fs
       .readdirSync(dir)
-      .filter((f) => f.endsWith('.mdx')) // ✅ Fixed: endsWith (capital W)
-      .map((f) => ({
-        slug: f.replace(/\.mdx$/, ''),
-      }));
+      .filter((f) => f.endsWith('.mdx'))
+      .map((f) => ({ slug: f.replace(/\.mdx$/, '') }));
   } catch {
     return [];
   }
@@ -24,12 +21,7 @@ export async function generateStaticParams() {
 
 export default function Post({ params }: { params: { slug: string } }) {
   try {
-    const file = path.join(
-      process.cwd(),
-      'content/insights',
-      `${params.slug}.mdx`
-    );
-
+    const file = path.join(process.cwd(), 'content/insights', `${params.slug}.mdx`);
     if (!fs.existsSync(file)) return notFound();
 
     const raw = fs.readFileSync(file, 'utf8');
