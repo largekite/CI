@@ -32,6 +32,7 @@ export default function Home(){
         </div>
       </section>
       <MarketStatsRow />
+
       <section id="method" className="section">
         <div className="eyebrow">How we work</div>
         <h2 className="h2">Method</h2>
@@ -45,7 +46,6 @@ export default function Home(){
         </div>
       </section>
 
-      
       <section id="cases" className="section">
         <div className="eyebrow">Snapshots</div>
         <h2 className="h2">Case Snapshots</h2>
@@ -66,6 +66,5 @@ export default function Home(){
         <p className="note">We deliver formal memos, spreadsheets, and a live review—not just dashboards.</p>
       </Section>
     </main>
-    <footer className="footer"><div>© {new Date().getFullYear()} LargeKiteCapitalIntelligence</div></footer>
   </>);
 }

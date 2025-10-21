@@ -1,9 +1,1 @@
-
-export function fmtAsOf(ms: number | null | undefined) {
-  try {
-    if (!ms) return '—';
-    return new Date(ms).toLocaleString();
-  } catch {
-    return '—';
-  }
-}
+export function fmtAsOf(ms?: number | null){ try{ return ms ? new Date(ms).toLocaleString() : '—'; } catch { return '—'; } }
