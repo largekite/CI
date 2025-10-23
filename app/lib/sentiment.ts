@@ -1,5 +1,6 @@
 // app/lib/sentiment.ts
-import { yahooChart } from './yahoo';
+import { yahooChart } from '@/app/lib/yahoo';  // <- use absolute path
+
 
 export type FullSeries = { t: number[]; close: (number | null)[]; ma50?: (number | null)[]; ma200?: (number | null)[] };
 export type SeriesHeadline = { last: number; chg5d: number; chg20d: number; chg60d: number; ma50?: number | null; ma200?: number | null };
