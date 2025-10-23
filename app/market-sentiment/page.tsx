@@ -32,7 +32,15 @@ function useSparkScale(
       if (v > max) max = v;
     }
   }
-  if (!isFinite(min) || !isFinite(max) || min===max) { min = 0; max = 1; }
+  if (!isFinite(min) || !isFinite(max)) { min = 0; max = 1; }
+  if (min === max) { min -= 1; max += 1; }
+
+  // ✅ add vertical headroom so strokes don’t touch the frame
+  const HEADROOM = 0.08; // 8% above & below
+  const range = max - min;
+  min = min - range * HEADROOM;
+  max = max + range * HEADROOM;
+
   const N = series.t.length;
   const innerW = Math.max(1, width - 2*pad);
   const innerH = Math.max(1, height - 2*pad);
@@ -95,8 +103,8 @@ function Legend({
 
 function Spark({
   series,
-  width=560,
-  height=160,
+  width=640,         // wider default
+  height=220,        // taller default
   colors,
   showTooltip=false,
   showGrid=true,
@@ -118,8 +126,8 @@ function Spark({
   pctWindow?: number,
   visible?: boolean[],
 }){
-  const PAD = 10;
-  const { N, sx, sy, innerH } = useSparkScale(series, width, height, PAD);
+  const PAD = 14; // more breathing room around edges
+  const { N, sx, sy, innerH, innerW } = useSparkScale(series, width, height, PAD);
   const vis = visible && visible.length === series.lines.length ? visible : series.lines.map(()=>true);
 
   const pathFor = (data:(number|null)[]) => {
@@ -180,7 +188,7 @@ function Spark({
     const rect = svg.getBoundingClientRect();
     const x = e.clientX - rect.left;
 
-    const frac = Math.min(1, Math.max(0, (x - PAD) / (width - 2*PAD)));
+    const frac = Math.min(1, Math.max(0, (x - PAD) / innerW));
     const i = Math.round(frac * (N-1));
 
     const values = series.lines.map(l => {
@@ -212,7 +220,8 @@ function Spark({
   return (
     <svg
       ref={svgRef}
-      width={width}
+      // ✅ Responsive width, fixed height
+      width="100%"
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
@@ -224,21 +233,21 @@ function Spark({
 
       <defs>
         <clipPath id={clipId}>
-          {/* inset by 0.5px to prevent stroke bleed on some renderers */}
+          {/* inset by 0.5px to prevent stroke bleed */}
           <rect x={PAD+0.5} y={PAD+0.5} width={width - 2*PAD - 1} height={height - 2*PAD - 1} />
         </clipPath>
         <path id={gridId} d={`M ${PAD} 0 H ${width-PAD}`} stroke="var(--line)" strokeDasharray="4 3" fill="none"/>
       </defs>
 
-      {/* Gridlines (clipped) */}
+      {/* Gridlines (use innerH for spacing) */}
       <g clipPath={`url(#${clipId})`}>
         {[0,1,2,3].map(g => {
-          const gy = PAD + (g+1)*((height - 2*PAD)/5);
+          const gy = PAD + (g+1)*(innerH/5);
           return <use key={g} href={`#${gridId}`} transform={`translate(0, ${gy})`} opacity="0.7"/>;
         })}
       </g>
 
-      {/* Lines (clipped) */}
+      {/* Lines */}
       <g clipPath={`url(#${clipId})`}>
         {series.lines[0] && mainVisible && momentumColors ? (
           <SegmentedLine data={series.lines[0].data} />
@@ -247,7 +256,7 @@ function Spark({
             <path
               d={pathFor(series.lines[0].data)}
               fill="none"
-              strokeWidth="2"
+              strokeWidth={2}
               stroke={colors?.[0] || '#334155'}
               opacity={0.95}
             />
@@ -259,7 +268,7 @@ function Spark({
               key={l.label}
               d={pathFor(l.data)}
               fill="none"
-              strokeWidth="2"
+              strokeWidth={2}
               stroke={colors?.[idx+1] || (idx===0 ? '#0ea5e9' : '#64748b')}
               opacity={0.9}
             />
@@ -267,7 +276,7 @@ function Spark({
         ))}
       </g>
 
-      {/* Tooltip (also clipped so guides/dots don't bleed) */}
+      {/* Tooltip (clipped) */}
       {showTooltip && hover && (
         <g clipPath={`url(#${clipId})`}>
           <line x1={hover.x} x2={hover.x} y1={PAD} y2={height-PAD} stroke="#94a3b8" strokeDasharray="4 3" />
@@ -293,7 +302,7 @@ function Spark({
               if (!isNaN(v)) labelLines.push(`${l.label}: ${v.toFixed(2)}`);
             });
 
-            const badgeWidth = 160;
+            const badgeWidth = 180;
             const badgeHeight = labelLines.length*16 + 8;
             const badgeX = Math.min(width - badgeWidth - 4, Math.max(hover.x + 8, PAD));
             const badgeY = Math.max(PAD + 4, Math.min(height - PAD - badgeHeight, hover.y - 18));
@@ -404,7 +413,7 @@ export default function MarketSentiment() {
       {!data && !error && <p className="content">Loading…</p>}
 
       {data && (
-        <div style={{display:'grid', gap:16, gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', marginTop:16}}>
+        <div style={{display:'grid', gap:16, gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', marginTop:16}}>
           <div className="card" style={{textAlign:'center'}}>
             <div className="eyebrow">Overall</div>
             <div style={{fontSize:42, fontWeight:800}}>{data.status.label}</div>
@@ -418,7 +427,7 @@ export default function MarketSentiment() {
               title="S&P 500 — last 1y"
               series={spxSeries}
               legendItems={[
-                { label: 'Close',  swatch: '#10b981/#ef4444' }, // momentum (up/down)
+                { label: 'Close',  swatch: '#10b981/#ef4444' },
                 { label: 'SMA50', swatch: '#0ea5e9' },
                 { label: 'SMA200', swatch: '#64748b' },
               ]}
