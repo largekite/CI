@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useId } from 'react';
 import { fmtAsOf } from '@/app/lib/fmt';
 
 type Status = { heat:number; label:'Hot'|'Neutral'|'Cool'|string; trendUp?:boolean; trendDown?:boolean };
@@ -166,8 +166,10 @@ function Spark({
     return <>{segs}</>;
   }
 
-  const clipId = 'plotClip_' + Math.random().toString(36).slice(2);
-  const gridId = 'gridPath_' + Math.random().toString(36).slice(2);
+  // ✅ Stable IDs to avoid SSR/client mismatch
+  const uid = useId().replace(/[:]/g, '');
+  const clipId = `plotClip_${uid}`;
+  const gridId = `gridPath_${uid}`;
 
   const svgRef = useRef<SVGSVGElement|null>(null);
   const [hover, setHover] = useState<{i:number; x:number; y:number; values:number[]}|null>(null);
@@ -222,12 +224,13 @@ function Spark({
 
       <defs>
         <clipPath id={clipId}>
-          <rect x={PAD} y={PAD} width={width - 2*PAD} height={height - 2*PAD} />
+          {/* inset by 0.5px to prevent stroke bleed on some renderers */}
+          <rect x={PAD+0.5} y={PAD+0.5} width={width - 2*PAD - 1} height={height - 2*PAD - 1} />
         </clipPath>
         <path id={gridId} d={`M ${PAD} 0 H ${width-PAD}`} stroke="var(--line)" strokeDasharray="4 3" fill="none"/>
       </defs>
 
-      {/* Gridlines */}
+      {/* Gridlines (clipped) */}
       <g clipPath={`url(#${clipId})`}>
         {[0,1,2,3].map(g => {
           const gy = PAD + (g+1)*((height - 2*PAD)/5);
@@ -235,7 +238,7 @@ function Spark({
         })}
       </g>
 
-      {/* Lines */}
+      {/* Lines (clipped) */}
       <g clipPath={`url(#${clipId})`}>
         {series.lines[0] && mainVisible && momentumColors ? (
           <SegmentedLine data={series.lines[0].data} />
@@ -264,11 +267,12 @@ function Spark({
         ))}
       </g>
 
-      {/* Tooltip */}
+      {/* Tooltip (also clipped so guides/dots don't bleed) */}
       {showTooltip && hover && (
         <g clipPath={`url(#${clipId})`}>
           <line x1={hover.x} x2={hover.x} y1={PAD} y2={height-PAD} stroke="#94a3b8" strokeDasharray="4 3" />
           <circle cx={hover.x} cy={hover.y} r="3.5" fill="#0f172a" stroke="#94a3b8"/>
+
           {(() => {
             const labelLines: string[] = [];
             if (showDate) {
@@ -279,8 +283,8 @@ function Spark({
               const v0 = hover.values[0];
               if (!isNaN(v0)) {
                 labelLines.push(`${series.lines[0].label}: ${v0.toFixed(2)}`);
-                const pct = pctChangeAt(hover.i, 20);
-                if (!isNaN(pct)) labelLines.push(`20d: ${pct.toFixed(2)}%`);
+                const pct = pctChangeAt(hover.i, pctWindow);
+                if (!isNaN(pct)) labelLines.push(`${pctWindow}d: ${pct.toFixed(2)}%`);
               }
             }
             series.lines.slice(1).forEach((l, idx) => {
@@ -295,7 +299,7 @@ function Spark({
             const badgeY = Math.max(PAD + 4, Math.min(height - PAD - badgeHeight, hover.y - 18));
 
             return (
-              <g transform={`translate(${badgeX}, ${badgeY})`} >
+              <g transform={`translate(${badgeX}, ${badgeY})`}>
                 <rect width={badgeWidth} height={badgeHeight} rx="6" ry="6" fill="#ffffff" stroke="var(--line)"/>
                 {labelLines.map((txt, i)=>(
                   <text key={i} x="8" y={14 + i*16} fontSize="11" fill="#334155">{txt}</text>
@@ -311,7 +315,6 @@ function Spark({
 
 function usePersistedVisibility(key:string, initial:boolean[]){
   const [visible, setVisible] = useState<boolean[]>(initial);
-  // Load once on mount
   useEffect(()=>{
     try{
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
@@ -324,7 +327,6 @@ function usePersistedVisibility(key:string, initial:boolean[]){
     }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Save whenever it changes
   useEffect(()=>{
     try{
       if (typeof window !== 'undefined'){
@@ -335,7 +337,6 @@ function usePersistedVisibility(key:string, initial:boolean[]){
   return [visible, setVisible] as const;
 }
 
-/** Wrapper that owns visibility state for a chart + legend, persisted in localStorage */
 function ChartWithLegend({
   storageKey,
   title,
@@ -344,7 +345,7 @@ function ChartWithLegend({
   legendInitial,
   ...sparkProps
 }:{
-  storageKey:string;                // unique key for localStorage
+  storageKey:string;
   title:string;
   series:{ t:number[]; lines:{ label:string; data:(number|null)[] }[] };
   legendItems:{ label:string; swatch?:string }[];
@@ -362,7 +363,7 @@ function ChartWithLegend({
   return (
     <div className="card">
       <h3>{title}</h3>
-      <Spark series={series} visible={visible} {...sparkProps as any} />
+      <Spark series={series} visible={visible} {...(sparkProps as any)} />
       <Legend items={legendItems} active={visible} onToggle={toggle} />
     </div>
   );
