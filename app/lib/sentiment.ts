@@ -1,9 +1,20 @@
 // app/lib/sentiment.ts
-import { yahooChart } from '@/app/lib/yahoo';  // <- use absolute path
+import { yahooChart } from '@/app/lib/yahoo';
 
-
-export type FullSeries = { t: number[]; close: (number | null)[]; ma50?: (number | null)[]; ma200?: (number | null)[] };
-export type SeriesHeadline = { last: number; chg5d: number; chg20d: number; chg60d: number; ma50?: number | null; ma200?: number | null };
+export type FullSeries = {
+  t: number[];
+  close: (number | null)[];
+  ma50?: (number | null)[];
+  ma200?: (number | null)[];
+};
+export type SeriesHeadline = {
+  last: number;
+  chg5d: number;
+  chg20d: number;
+  chg60d: number;
+  ma50?: number | null;
+  ma200?: number | null;
+};
 export type SeriesBundle = { series: FullSeries; headline: SeriesHeadline };
 
 function sma(arr: (number | null)[], win: number): (number | null)[] {
@@ -48,9 +59,65 @@ export async function getSeries(symbol: string, range = '1y', interval = '1d'): 
   return { series, headline };
 }
 
-// Same as before
 export function calcStatus(spx: SeriesBundle, vix: SeriesBundle) {
   const heat = 50 + 2 * (spx.headline.chg20d ?? 0) - 1.5 * Math.max(((vix.headline.last ?? 0) as number) - 18, 0);
   const label = heat >= 60 ? 'Hot' : heat <= 45 ? 'Cool' : 'Neutral';
   return { heat: Math.round(Math.max(0, Math.min(100, heat))), label };
+}
+
+export function defaultIntervalFor(range: string) {
+  switch (range) {
+    case '1mo':
+    case '3mo':
+    case '6mo':
+    case 'ytd':
+    case '1y':
+      return '1d';
+    case '2y':
+    case '5y':
+      return '1wk';
+    case '10y':
+    case 'max':
+      return '1mo';
+    default:
+      return '1d';
+  }
+}
+
+/** Shared builder used by both API route and server components. */
+export async function getSentimentFull(range = '1y', interval?: string) {
+  const intv = interval || defaultIntervalFor(range);
+
+  // Yahoo symbols
+  const SPX  = '^GSPC';
+  const VIX  = '^VIX';
+  const NDXC = '^IXIC';   // NASDAQ Composite (use '^NDX' for NASDAQ-100 if you prefer)
+  const DJI  = '^DJI';
+  const GOLD = 'GC=F';    // alt: 'XAUUSD=X' or 'GLD'
+
+  const [spx, vix, ndx, dji, gold] = await Promise.all([
+    getSeries(SPX,  range, intv),
+    getSeries(VIX,  range, intv),
+    getSeries(NDXC, range, intv),
+    getSeries(DJI,  range, intv),
+    getSeries(GOLD, range, intv),
+  ]);
+
+  const status = calcStatus(spx, vix);
+
+  return {
+    ok: true,
+    asOf: Date.now(),
+    status,
+    spx: spx.headline,
+    vix: vix.headline,
+    ndx: ndx.headline,
+    dji: dji.headline,
+    gold: gold.headline,
+    spxSeries: spx.series,
+    vixSeries: vix.series,
+    ndxSeries: ndx.series,
+    djiSeries: dji.series,
+    goldSeries: gold.series,
+  };
 }
