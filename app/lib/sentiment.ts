@@ -1,12 +1,17 @@
 // app/lib/sentiment.ts
+// Utilities for fetching market series from Yahoo and computing sentiment.
+
 import { yahooChart } from '@/app/lib/yahoo';
 
+/* ======================= Types ======================= */
+
 export type FullSeries = {
-  t: number[];
-  close: (number | null)[];
+  t: number[];                       // timestamps (ms)
+  close: (number | null)[];          // closing prices (nullable for gaps)
   ma50?: (number | null)[];
   ma200?: (number | null)[];
 };
+
 export type SeriesHeadline = {
   last: number;
   chg5d: number;
@@ -15,7 +20,44 @@ export type SeriesHeadline = {
   ma50?: number | null;
   ma200?: number | null;
 };
-export type SeriesBundle = { series: FullSeries; headline: SeriesHeadline };
+
+export type SeriesBundle = {
+  series: FullSeries;
+  headline: SeriesHeadline;
+};
+
+export type SentimentStatus = {
+  heat: number;                      // 0..100 heuristic
+  label: 'Hot' | 'Neutral' | 'Cool' | string;
+};
+
+export type SentimentFull = {
+  ok: boolean;
+  asOf: number;
+  status: SentimentStatus;
+
+  // Headline stats (optional for top-cards)
+  spx: SeriesHeadline;
+  vix: SeriesHeadline;
+  ndx: SeriesHeadline;
+  dji: SeriesHeadline;
+  gold: SeriesHeadline;
+
+  // Full series for charts
+  spxSeries: FullSeries;
+  vixSeries: FullSeries;
+  ndxSeries: FullSeries;
+  djiSeries: FullSeries;
+  goldSeries: FullSeries;
+};
+
+export type SentimentCompact = {
+  ok: boolean;
+  asOf: number;
+  status: SentimentStatus;
+};
+
+/* ================== Math helpers ================== */
 
 function sma(arr: (number | null)[], win: number): (number | null)[] {
   const out: (number | null)[] = new Array(arr.length).fill(null);
@@ -44,11 +86,13 @@ function headlineFrom(series: FullSeries): SeriesHeadline {
   const { close, ma50, ma200 } = series;
   const i = close.length - 1;
   const last = close[i] ?? NaN;
-  const chg5d = pctChange(close, i, 5) ?? 0;
+  const chg5d  = pctChange(close, i, 5)  ?? 0;
   const chg20d = pctChange(close, i, 20) ?? 0;
   const chg60d = pctChange(close, i, 60) ?? 0;
   return { last, chg5d, chg20d, chg60d, ma50: ma50?.[i] ?? null, ma200: ma200?.[i] ?? null };
 }
+
+/* ============== Public series fetcher ============== */
 
 export async function getSeries(symbol: string, range = '1y', interval = '1d'): Promise<SeriesBundle> {
   const { t, close } = await yahooChart(symbol, range, interval);
@@ -59,8 +103,15 @@ export async function getSeries(symbol: string, range = '1y', interval = '1d'): 
   return { series, headline };
 }
 
-export function calcStatus(spx: SeriesBundle, vix: SeriesBundle) {
-  const heat = 50 + 2 * (spx.headline.chg20d ?? 0) - 1.5 * Math.max(((vix.headline.last ?? 0) as number) - 18, 0);
+/* ============== Sentiment & defaults ============== */
+
+export function calcStatus(spx: SeriesBundle, vix: SeriesBundle): SentimentStatus {
+  // Simple heuristic: momentum warms, high VIX cools
+  const heat =
+    50 +
+    2 * (spx.headline.chg20d ?? 0) -
+    1.5 * Math.max(((vix.headline.last ?? 0) as number) - 18, 0);
+
   const label = heat >= 60 ? 'Hot' : heat <= 45 ? 'Cool' : 'Neutral';
   return { heat: Math.round(Math.max(0, Math.min(100, heat))), label };
 }
@@ -84,16 +135,17 @@ export function defaultIntervalFor(range: string) {
   }
 }
 
-/** Shared builder used by both API route and server components. */
-export async function getSentimentFull(range = '1y', interval?: string) {
+/* ============== Unified builders ============== */
+
+export async function getSentimentFull(range = '1y', interval?: string): Promise<SentimentFull> {
   const intv = interval || defaultIntervalFor(range);
 
   // Yahoo symbols
-  const SPX  = '^GSPC';
-  const VIX  = '^VIX';
-  const NDXC = '^IXIC';   // NASDAQ Composite (use '^NDX' for NASDAQ-100 if you prefer)
-  const DJI  = '^DJI';
-  const GOLD = 'GC=F';    // alt: 'XAUUSD=X' or 'GLD'
+  const SPX  = '^GSPC';   // S&P 500
+  const VIX  = '^VIX';    // VIX
+  const NDXC = '^IXIC';   // NASDAQ Composite (use '^NDX' for NASDAQ-100 if preferred)
+  const DJI  = '^DJI';    // Dow 30
+  const GOLD = 'GC=F';    // Gold futures (alt: 'XAUUSD=X' or 'GLD')
 
   const [spx, vix, ndx, dji, gold] = await Promise.all([
     getSeries(SPX,  range, intv),
@@ -120,4 +172,10 @@ export async function getSentimentFull(range = '1y', interval?: string) {
     djiSeries: dji.series,
     goldSeries: gold.series,
   };
+}
+
+/** Lightweight helper for components that only need the pill data */
+export async function getSentimentCompact(range = '1y', interval?: string): Promise<SentimentCompact> {
+  const full = await getSentimentFull(range, interval);
+  return { ok: Boolean(full?.ok), asOf: full.asOf, status: full.status };
 }
