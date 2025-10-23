@@ -1,18 +1,55 @@
-export const Y_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart/';
-export async function fetchYahoo(symbol:string, range='1y', interval='1d'){
-  const url = `${Y_BASE}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-  if (!res.ok) throw new Error('Yahoo fetch failed: ' + res.status);
-  const j = await res.json();
-  const r = j?.chart?.result?.[0];
-  const closes:number[] = r?.indicators?.quote?.[0]?.close || [];
-  const t:number[] = (r?.timestamp || []).map((x:number)=> x*1000);
-  return { closes, t };
+// app/lib/sentiment.ts
+import { yahooChart } from './yahoo';
+
+export type FullSeries = { t: number[]; close: (number | null)[]; ma50?: (number | null)[]; ma200?: (number | null)[] };
+export type SeriesHeadline = { last: number; chg5d: number; chg20d: number; chg60d: number; ma50?: number | null; ma200?: number | null };
+export type SeriesBundle = { series: FullSeries; headline: SeriesHeadline };
+
+function sma(arr: (number | null)[], win: number): (number | null)[] {
+  const out: (number | null)[] = new Array(arr.length).fill(null);
+  let sum = 0, cnt = 0;
+  const q: number[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (v != null && Number.isFinite(v)) { q.push(v); sum += v; cnt++; } else { q.push(NaN); }
+    if (q.length > win) {
+      const removed = q.shift()!;
+      if (!Number.isNaN(removed)) { sum -= removed; cnt--; }
+    }
+    out[i] = cnt === win ? sum / cnt : null;
+  }
+  return out;
 }
-export function smaArr(series:number[], window:number){ const out:(number|null)[] = new Array(series.length).fill(null); let sum=0,cnt=0; for(let i=0;i<series.length;i++){ const v=series[i]; if(isFinite(v)){sum+=v;cnt++;} if(i>=window){ const old=series[i-window]; if(isFinite(old)){sum-=old;cnt--;}} if(i>=window-1 && cnt===window) out[i]=sum/window;} return out; }
-export function pct(a:number,b:number){ if(!a||!b||!isFinite(a)||!isFinite(b)||b===0) return 0; return (a/b-1)*100; }
-export function summarize(closes:number[], periods=20){ const n=closes.length; const last=closes[n-1]; const p20=n>periods?closes[n-1-periods]:closes[0]; const p5=n>5?closes[n-1-5]:closes[0]; const p60=n>60?closes[n-1-60]:closes[0]; const ma50=smaArr(closes,50); const ma200=smaArr(closes,200); const lastMa50=ma50[ma50.length-1]; const lastMa200=ma200[ma200.length-1]; return { last, chg5d:pct(last,p5), chg20d:pct(last,p20), chg60d:pct(last,p60), ma50:lastMa50, ma200:lastMa200, ma50Arr:ma50, ma200Arr:ma200 }; }
-export function computeCrossovers(t:number[], a:(number|null)[], b:(number|null)[]){ const ev:any[]=[]; let prev:null|number=null; for(let i=0;i<t.length;i++){ const x=a[i], y=b[i]; if(x==null||y==null) continue; const d=(x as number)-(y as number); if(prev!=null){ if(prev<=0 && d>0) ev.push({t:t[i], type:'bull'}); else if(prev>=0 && d<0) ev.push({t:t[i], type:'bear'});} prev=d;} return ev; }
-export function computeHeat(spx:any, vix:any){ let heat=50; heat += (spx.chg20d||0)*2; heat -= Math.max(0,(vix.last||0)-18)*1.5; heat=Math.max(0,Math.min(100,heat)); let label:'Hot'|'Neutral'|'Cool'='Neutral'; if(heat>=60) label='Hot'; else if(heat<=40) label='Cool'; const trendUp=!!(spx.ma50!=null&&spx.ma200!=null&&spx.ma50>spx.ma200); if(label==='Hot' && !trendUp){ label='Neutral'; heat=Math.min(59,heat);} return { heat:Math.round(heat), label, trendUp, trendDown:!trendUp }; }
-export async function getSentimentFull(){ const [spxRaw,vixRaw]=await Promise.all([fetchYahoo('^GSPC','1y','1d'), fetchYahoo('^VIX','1y','1d')]); const spx=summarize(spxRaw.closes,20); const vix=summarize(vixRaw.closes,20); const status=computeHeat(spx,vix); const crossovers=computeCrossovers(spxRaw.t, spx.ma50Arr, spx.ma200Arr); return { ok:true, asOf: Date.now(), status, spx, vix, spxSeries:{ t:spxRaw.t, close:spxRaw.closes, ma50:spx.ma50Arr, ma200:spx.ma200Arr }, vixSeries:{ t:vixRaw.t, close:vixRaw.closes }, crossovers }; }
-export async function getSentimentCompact(){ const f:any=await getSentimentFull(); return { asOf:f.asOf, label:f.status.label, heat:f.status.heat, trendUp:f.status.trendUp, spx:{ last:f.spx.last, chg20d:f.spx.chg20d }, vix:{ last:f.vix.last, chg20d:f.vix.chg20d } }; }
+
+function pctChange(arr: (number | null)[], i: number, lag: number): number | null {
+  if (i - lag < 0) return null;
+  const a = arr[i], b = arr[i - lag];
+  if (a == null || b == null || !Number.isFinite(a) || !Number.isFinite(b) || b === 0) return null;
+  return (a / b - 1) * 100;
+}
+
+function headlineFrom(series: FullSeries): SeriesHeadline {
+  const { close, ma50, ma200 } = series;
+  const i = close.length - 1;
+  const last = close[i] ?? NaN;
+  const chg5d = pctChange(close, i, 5) ?? 0;
+  const chg20d = pctChange(close, i, 20) ?? 0;
+  const chg60d = pctChange(close, i, 60) ?? 0;
+  return { last, chg5d, chg20d, chg60d, ma50: ma50?.[i] ?? null, ma200: ma200?.[i] ?? null };
+}
+
+export async function getSeries(symbol: string, range = '1y', interval = '1d'): Promise<SeriesBundle> {
+  const { t, close } = await yahooChart(symbol, range, interval);
+  const ma50 = sma(close, 50);
+  const ma200 = sma(close, 200);
+  const series: FullSeries = { t, close, ma50, ma200 };
+  const headline = headlineFrom(series);
+  return { series, headline };
+}
+
+// Same as before
+export function calcStatus(spx: SeriesBundle, vix: SeriesBundle) {
+  const heat = 50 + 2 * (spx.headline.chg20d ?? 0) - 1.5 * Math.max(((vix.headline.last ?? 0) as number) - 18, 0);
+  const label = heat >= 60 ? 'Hot' : heat <= 45 ? 'Cool' : 'Neutral';
+  return { heat: Math.round(Math.max(0, Math.min(100, heat))), label };
+}
