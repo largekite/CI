@@ -1,6 +1,7 @@
 // app/api/summarize-cfa/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { summarizeCfaArticle } from "@/lib/summarizeCfaArticle";
+import { summarizeCfaArticle } from "../../lib/summarizeCfaArticle";
+
 
 export const runtime = "nodejs"; // safer for the OpenAI client than "edge"
 
