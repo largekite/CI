@@ -30,13 +30,6 @@ export default function RootLayout({
             <div className="flex items-center gap-6">
 
               <Link
-                href="/dashboard"
-                className="text-sm hover:text-blue-600 transition"
-              >
-                Dashboard
-              </Link>
-
-              <Link
                 href="/tools"
                 className="text-sm hover:text-blue-600 transition"
               >
