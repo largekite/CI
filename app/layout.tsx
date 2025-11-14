@@ -28,14 +28,6 @@ export default function RootLayout({
 
             {/* RIGHT: Navigation links */}
             <div className="flex items-center gap-6">
-
-              <Link
-                href="/tools"
-                className="text-sm hover:text-blue-600 transition"
-              >
-                Tools
-              </Link>
-
               {/* === NEW FEATURE: CFA Article Summarizer === */}
               <Link
                 href="/tools/cfa-summarizer"
