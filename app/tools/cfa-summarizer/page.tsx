@@ -1,70 +1,125 @@
-import Link from 'next/link';
-import MarketStatsRow from './components/MarketStatsRow';
-import SentimentPill from './components/SentimentPill';
+// app/tools/cfa-summarizer/page.tsx
+"use client";
 
-function Section({ id, title, eyebrow, children }:{ id?:string; title:string; eyebrow?:string; children:React.ReactNode }){
-  return (<section id={id} className="section">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h2 className="h2">{title}</h2><div className="content">{children}</div></section>);
+import React, { useState } from "react";
+
+interface ArticleSummary {
+  title?: string;
+  keyTakeaways: string[];
+  keyPoints: string[];
+  rawText: string;
 }
-export default function Home(){
-  return (<>
-    <header className="nav">
-      <div className="brand">LargeKiteCapitalIntelligence</div>
-      <nav className="links">
-        <a href="/services">Services</a>
-        <a href="#method">Method</a>
-        <a href="#cases">Case Snapshots</a>
-        <a href="/insights">Insights</a>
-        <a href="/market-sentiment">Market Sentiment</a>
-        <a className="cta" href="/contact">Book a call</a>
-      </nav>
-    </header>
-    <main>
-      <section className="hero">
-        <div className="hero-inner">
-          <h1>Independent Finance Consulting.<br/>AI is just our wrench.</h1>
-          <p>We’re a finance-first partner for individuals, founders, and advisors. We use AI to accelerate research and modeling—<strong>never</strong> to replace professional judgment.</p>
-          <div className="hero-ctas">
-            <a className="btn primary" href="/contact">Book a consultation</a>
-            <a className="btn ghost" href="#method">See our methodology</a>
-            <SentimentPill />
-          </div>
-          <ul className="trust"><li>CFA-led</li><li>Human-reviewed</li><li>Transparent fees</li></ul>
-        </div>
-      </section>
-      <MarketStatsRow />
 
-      <section id="method" className="section">
-        <div className="eyebrow">How we work</div>
-        <h2 className="h2">Method</h2>
-        <div className="content">
-          <ol className="steps">
-            <li>Discovery: define objectives, constraints, and risk budget.</li>
-            <li>Research: human-led due diligence; AI speeds data pulls only.</li>
-            <li>Modeling: scenarios, taxes, and drawdowns; share assumptions.</li>
-            <li>Decision: memo, spreadsheet, and live review.</li>
-          </ol>
-        </div>
-      </section>
+export default function CfaSummarizerPage() {
+  const [articleText, setArticleText] = useState("");
+  const [summary, setSummary] = useState<ArticleSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-      <section id="cases" className="section">
-        <div className="eyebrow">Snapshots</div>
-        <h2 className="h2">Case Snapshots</h2>
-        <div className="cases">
-          <div className="case"><h3>Public markets IPS</h3><p>Rebuilt a client policy with risk bands and tax-aware rebalancing.</p></div>
-          <div className="case"><h3>Real estate timing</h3><p>Modeled buy-vs-rent and fixed vs ARM with rate paths.</p></div>
-          <div className="case"><h3>Manager screen</h3><p>Compared factor tilts, costs, and persistence across ETFs.</p></div>
-        </div>
-        <p className="disclaimer">Examples are illustrative; not investment advice.</p>
-      </section>
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSummary(null);
 
-      <Section id="services" eyebrow="What we do" title="Finance services with measurable outcomes">
-        <div className="cards">
-          <div className="card"><h3>Portfolio Strategy</h3><p>Asset allocation, risk budgeting, tax-aware rebalancing, IPS drafting.</p></div>
-          <div className="card"><h3>Research & Due Diligence</h3><p>Screening and memo prep on funds, managers, or direct deals.</p></div>
-          <div className="card"><h3>Cash-Flow & Real Estate</h3><p>Scenario planning for mortgages, second properties, and cap-rate sensitivity.</p></div>
+    if (!articleText.trim()) {
+      setError("Please paste the article text first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/summarize-cfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleText }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || `Request failed with ${res.status}`);
+      }
+
+      const data = (await res.json()) as ArticleSummary;
+      setSummary(data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold">
+          CFA Research Article Summarizer
+        </h1>
+        <p className="text-sm text-gray-600">
+          Paste a CFA Institute / Financial Analysts Journal article (text only),
+          and LargeKite Capital will generate key takeaways and practitioner
+          points for you.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block text-sm font-medium">
+          Article Text
+          <textarea
+            className="mt-1 w-full min-h-[220px] rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-500/40"
+            placeholder="Paste the article text here (e.g., from PDF copy)..."
+            value={articleText}
+            onChange={(e) => setArticleText(e.target.value)}
+          />
+        </label>
+
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+          >
+            {loading ? "Summarizing..." : "Summarize Article"}
+          </button>
+          {error && (
+            <span className="text-sm text-red-600">
+              {error}
+            </span>
+          )}
         </div>
-        <p className="note">We deliver formal memos, spreadsheets, and a live review—not just dashboards.</p>
-      </Section>
-    </main>
-  </>);
+      </form>
+
+      {summary && (
+        <div className="space-y-6 border rounded-2xl p-5 bg-white shadow-sm">
+          {summary.title && (
+            <div>
+              <h2 className="text-xl font-semibold">{summary.title}</h2>
+            </div>
+          )}
+
+          {summary.keyTakeaways?.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Key Takeaways</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                {summary.keyTakeaways.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {summary.keyPoints?.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Key Points</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                {summary.keyPoints.map((p, i) => (
+                  <li key={i}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
