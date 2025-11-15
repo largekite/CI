@@ -1,3 +1,4 @@
+// app/api/pdf-to-text/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import pdfParse from "pdf-parse";
 
