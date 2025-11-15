@@ -13,47 +13,12 @@ type SummaryLevel = "base" | "more" | "max";
 
 const MAX_CHARS = 20000;
 
-async function extractTextFromFile(file: File): Promise<string> {
-  const lowerName = file.name.toLowerCase();
-
-  if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    // Convert to base64
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-
-    const res = await fetch("/api/pdf-to-text", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: base64 }),
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(
-        data?.error || data?.details || "Failed to extract text from PDF."
-      );
-    }
-
-    return String(data?.text || "");
-  }
-
-  // Non-PDF → plain text
-  return await file.text();
-}
-
-
-
 export default function SummarizerPage() {
   const [articleText, setArticleText] = useState("");
+  const [articleUrl, setArticleUrl] = useState("");
   const [summary, setSummary] = useState<ArticleSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingUrl, setLoadingUrl] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,18 +40,57 @@ export default function SummarizerPage() {
         body: JSON.stringify({ articleText, level }),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
         throw new Error(data?.details || data?.error || "Request failed");
       }
 
-      const json = (await res.json()) as ArticleSummary;
-      setSummary(json);
-    } catch (err) {
+      setSummary(data as ArticleSummary);
+    } catch (err: any) {
       console.error(err);
-      setError("Unable to generate summary.");
+      setError(err?.message || "Unable to generate summary.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleLoadFromUrl() {
+    setError(null);
+    setSummary(null);
+    setCopied(false);
+
+    const url = articleUrl.trim();
+    if (!url) {
+      setError("Please enter an article URL.");
+      return;
+    }
+
+    setLoadingUrl(true);
+    try {
+      const res = await fetch("/api/fetch-article-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.details || "Failed to load article.");
+      }
+
+      const text = String(data?.text || "");
+      if (!text.trim()) {
+        throw new Error("No readable text was found at that URL.");
+      }
+
+      setArticleText(text);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Failed to extract text from URL.");
+    } finally {
+      setLoadingUrl(false);
     }
   }
 
@@ -95,30 +99,6 @@ export default function SummarizerPage() {
     setSummary(null);
     setCopied(false);
     setError(null);
-  }
-
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await extractTextFromFile(file);
-      let truncated = text;
-      let msg: string | null = null;
-
-      if (text.length > MAX_CHARS) {
-        truncated = text.slice(0, MAX_CHARS);
-        msg = "Input truncated to first 20,000 characters.";
-      }
-
-      setArticleText(truncated);
-      setSummary(null);
-      setCopied(false);
-      setError(msg);
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Unable to read file.");
-    }
   }
 
   async function handleCopySummary() {
@@ -208,33 +188,50 @@ export default function SummarizerPage() {
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
         {/* LEFT: input */}
         <section>
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Article</span>
-              <span className="text-xs text-gray-500">
-                {articleText.length.toLocaleString()} /{" "}
-                {MAX_CHARS.toLocaleString()}
-              </span>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-5">
+            {/* URL input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">
+                Article URL (optional)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={articleUrl}
+                  onChange={(e) => setArticleUrl(e.target.value)}
+                  placeholder="https://example.com/article..."
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+                <button
+                  type="button"
+                  onClick={handleLoadFromUrl}
+                  disabled={loadingUrl}
+                  className="whitespace-nowrap rounded-lg bg-gray-200 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  {loadingUrl ? "Loading..." : "Load from URL"}
+                </button>
+              </div>
             </div>
 
-            <textarea
-              className="w-full min-h-[220px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              placeholder="Paste article text here…"
-              value={articleText}
-              maxLength={MAX_CHARS}
-              onChange={(e) => setArticleText(e.target.value)}
-            />
+            {/* Article text */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">
+                  Article text
+                </span>
+                <span className="text-xs text-gray-500">
+                  {articleText.length.toLocaleString()} /{" "}
+                  {MAX_CHARS.toLocaleString()}
+                </span>
+              </div>
 
-            <div className="flex flex-col gap-2 text-xs text-gray-600">
-              <label className="inline-flex items-center gap-2">
-                <span>Upload (txt / md / text):</span>
-                <input
-                  type="file"
-                  accept=".txt,.md,.text,application/pdf"
-                  onChange={handleFileUpload}
-                  className="text-xs"
-                />
-              </label>
+              <textarea
+                className="w-full min-h-[220px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                placeholder="Paste article text here, or load from URL above..."
+                value={articleText}
+                maxLength={MAX_CHARS}
+                onChange={(e) => setArticleText(e.target.value)}
+              />
             </div>
 
             {error && (
