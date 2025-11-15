@@ -41,15 +41,12 @@ export class RealtorProvider implements PropertyDataProvider {
     url.searchParams.set('postal_code', params.zip);
     url.searchParams.set('sort', 'relevance');
     url.searchParams.set('offset', '0');
-    url.searchParams.set('limit', '50'); // tweak if needed
+    url.searchParams.set('limit', '50');
 
     if (params.minPrice) url.searchParams.set('price_min', String(params.minPrice));
     if (params.maxPrice) url.searchParams.set('price_max', String(params.maxPrice));
     if (params.minBeds) url.searchParams.set('beds_min', String(params.minBeds));
     if (params.minBaths) url.searchParams.set('baths_min', String(params.minBaths));
-
-    // You can also map your propertyTypes to prop_type if you want:
-    // if (params.propertyTypes?.length) { ... }
 
     const res = await fetch(url.toString(), {
       method: 'GET',
@@ -74,9 +71,13 @@ export class RealtorProvider implements PropertyDataProvider {
 
         const addr = p.address || {};
 
-        const primaryPhoto = p.photos && p.photos.length > 0
-          ? p.photos[0].href
-          : undefined;
+        const images =
+          (p.photos || [])
+            .map((ph) => ph.href)
+            .filter((href): href is string => !!href)
+            .slice(0, 6) || [];
+
+        const primaryPhoto = images[0];
 
         const hoa =
           p.hoa_fee_total ??
@@ -100,6 +101,7 @@ export class RealtorProvider implements PropertyDataProvider {
           hoaMonthly: hoa ? Number(hoa) : undefined,
 
           imageUrl: primaryPhoto,
+          images, // 🔥 NEW: full array for carousel/strip
           externalUrl: p.rdc_web_url,
         };
       })
