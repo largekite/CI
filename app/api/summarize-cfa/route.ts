@@ -1,4 +1,3 @@
-// app/api/summarize-cfa/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { summarizeCfaArticle } from "../../lib/summarizeCfaArticle";
 
@@ -8,7 +7,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const articleText = body?.articleText;
-    const detail = Boolean(body?.detail); // <-- read the flag
+    const detail = Boolean(body?.detail);
 
     if (!articleText || typeof articleText !== "string") {
       return NextResponse.json(
@@ -17,11 +16,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Defensive truncation on the server as well
-    const MAX_CHARS = 20000;
     const trimmedText =
-      articleText.length > MAX_CHARS
-        ? articleText.slice(0, MAX_CHARS)
+      articleText.length > 20000
+        ? articleText.slice(0, 20000)
         : articleText;
 
     const summary = await summarizeCfaArticle(trimmedText, detail);
