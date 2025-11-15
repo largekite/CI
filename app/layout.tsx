@@ -35,7 +35,7 @@ export default function RootLayout({
                Summarizer
               </Link>
               <Link
-              href="/invest"
+              href="/tools/investment-property-finder"
               className="text-sm font-medium text-slate-700 hover:text-[#14b8a6]"
                >
                Investment Property Finder
