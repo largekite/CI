@@ -144,3 +144,90 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
 
               <button
                 type="button"
+                onClick={handleClear}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Clear
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseSample}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Sample
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* RIGHT: SUMMARY */}
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
+            {loading && (
+              <div className="flex-1 flex items-center justify-center text-sm text-gray-500">
+                <div className="animate-pulse text-base font-medium text-gray-800">
+                  Generating summary…
+                </div>
+              </div>
+            )}
+
+            {!loading && summary && (
+              <div className="space-y-4 flex-1">
+                {summary.title && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {summary.title}
+                    </h2>
+                  </div>
+                )}
+
+                {summary.keyTakeaways?.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Key Takeaways
+                    </h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                      {summary.keyTakeaways.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {summary.keyPoints?.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Key Points
+                    </h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                      {summary.keyPoints.map((p, i) => (
+                        <li key={i}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!loading && !summary && (
+              <div className="flex-1" />
+            )}
+
+            {summary && !loading && (
+              <div className="mt-4 flex justify-end text-[11px]">
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
