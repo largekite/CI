@@ -1,17 +1,37 @@
-// app/api/sentiment/route.ts
-import { NextResponse } from 'next/server';
-import { getSentimentFull, defaultIntervalFor } from '@/app/lib/sentiment';
+import { NextRequest, NextResponse } from "next/server";
+import pdfParse from "pdf-parse";
 
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
 
-export async function GET(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const range = url.searchParams.get('range') || '1y';
-    const interval = url.searchParams.get('interval') || defaultIntervalFor(range);
-    const data = await getSentimentFull(range, interval);
-    return NextResponse.json(data, { headers: { 'cache-control': 'no-store' } });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    const body = await req.json();
+    const data = body?.data as string | undefined;
+
+    if (!data || typeof data !== "string") {
+      return NextResponse.json(
+        { error: "Missing 'data' (base64-encoded PDF)." },
+        { status: 400 }
+      );
+    }
+
+    const buffer = Buffer.from(data, "base64");
+    const result = await pdfParse(buffer);
+
+    return NextResponse.json(
+      {
+        text: result.text || "",
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    console.error("pdf-to-text error:", err);
+    return NextResponse.json(
+      {
+        error: "Failed to parse PDF",
+        details: err?.message ?? "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
