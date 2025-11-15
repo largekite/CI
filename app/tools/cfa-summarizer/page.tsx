@@ -99,41 +99,38 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
-      {/* Header */}
+    <div className="space-y-8">
+      {/* Header – matches main site tone */}
       <header className="space-y-3">
-        <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-800">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-blue-700">
           LargeKite Capital · Research Tool
-        </span>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
           Research Summarizer for CFA & Academic Articles
         </h1>
-        <p className="text-sm text-slate-600 max-w-3xl">
+        <p className="text-sm text-gray-700 max-w-3xl">
           We use this tool to convert dense retirement, factor, and portfolio
           research into concise, practitioner-ready takeaways. AI does the first
-          pass;{" "}
-          <span className="font-medium text-slate-900">
-            final judgment remains human.
-          </span>
+          pass; <span className="font-medium">final judgment remains human.</span>
         </p>
       </header>
 
-      {/* Main layout */}
+      {/* Two-column layout */}
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        {/* Left: input panel */}
+        {/* Left: input */}
         <section className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-900">
+              <span className="text-sm font-medium text-gray-900">
                 Article text
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-gray-500">
                 {charCount.toLocaleString()} / {maxChars.toLocaleString()} chars
               </span>
             </div>
 
             <textarea
-              className="w-full min-h-[260px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400/50 focus:border-sky-500"
+              className="w-full min-h-[260px] rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
               placeholder="Paste the article text here (e.g., abstract + main body from a CFA Institute / FAJ paper)..."
               value={articleText}
               maxLength={maxChars}
@@ -150,7 +147,7 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center rounded-xl bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-950 disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
               >
                 {loading ? "Summarizing..." : "Summarize article"}
               </button>
@@ -158,7 +155,7 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-xs text-slate-500 hover:text-slate-700"
+                className="text-xs text-gray-500 hover:text-gray-700"
               >
                 Clear
               </button>
@@ -166,14 +163,14 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
               <button
                 type="button"
                 onClick={handleUseSample}
-                className="text-xs text-slate-500 hover:text-slate-700"
+                className="text-xs text-gray-500 hover:text-gray-700"
               >
                 Use sample text
               </button>
             </div>
           </form>
 
-          <div className="space-y-1 text-[11px] text-slate-500">
+          <div className="space-y-1 text-[11px] text-gray-500">
             <p>
               For best results, include at least the abstract and main body. We
               typically skip references and footnotes.
@@ -185,17 +182,17 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
           </div>
         </section>
 
-        {/* Right: summary panel */}
+        {/* Right: summary */}
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
             {!summary && !loading && !error && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-slate-500 px-4">
-                <div className="mb-2 text-base font-medium text-slate-800">
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-gray-500 px-4">
+                <div className="mb-2 text-base font-medium text-gray-800">
                   Summary will appear here
                 </div>
                 <p>
                   Paste an article on the left and click{" "}
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-gray-900">
                     Summarize article
                   </span>{" "}
                   to see key takeaways and practitioner points.
@@ -204,8 +201,8 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
             )}
 
             {loading && (
-              <div className="flex-1 flex flex-col items-center justify-center text-sm text-slate-500">
-                <div className="animate-pulse mb-2 text-base font-medium text-slate-800">
+              <div className="flex-1 flex flex-col items-center justify-center text-sm text-gray-500">
+                <div className="animate-pulse mb-2 text-base font-medium text-gray-800">
                   Generating summary…
                 </div>
                 <p>Extracting spending rules, risk insights, and trade-offs.</p>
@@ -215,11 +212,11 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
             {summary && !loading && (
               <div className="space-y-4 flex-1">
                 {summary.title && (
-                  <div className="border-b border-slate-100 pb-3">
-                    <h2 className="text-lg font-semibold text-slate-900">
+                  <div className="border-b border-gray-100 pb-3">
+                    <h2 className="text-lg font-semibold text-gray-900">
                       {summary.title}
                     </h2>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-gray-500">
                       Model-generated summary. We always cross-check with the
                       original paper.
                     </p>
@@ -228,10 +225,10 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
 
                 {summary.keyTakeaways?.length > 0 && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-gray-900">
                       Key takeaways
                     </h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                       {summary.keyTakeaways.map((t, i) => (
                         <li key={i}>{t}</li>
                       ))}
@@ -241,10 +238,10 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
 
                 {summary.keyPoints?.length > 0 && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-gray-900">
                       Key points
                     </h3>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                       {summary.keyPoints.map((p, i) => (
                         <li key={i}>{p}</li>
                       ))}
@@ -254,8 +251,7 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
               </div>
             )}
 
-            {/* Footer controls */}
-            <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500">
+            <div className="mt-4 flex items-center justify-between text-[11px] text-gray-500">
               <div>
                 This tool summarizes research for discussion. It is not
                 investment advice or a recommendation to act.
@@ -265,7 +261,7 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
                 <button
                   type="button"
                   onClick={handleCopySummary}
-                  className="text-[11px] font-medium text-sky-600 hover:text-sky-700"
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700"
                 >
                   {copied ? "Copied" : "Copy summary"}
                 </button>
@@ -273,12 +269,11 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
             </div>
           </div>
 
-          {/* How we use this in practice */}
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-700">
               How we use this in practice
             </h3>
-            <ul className="text-[11px] text-slate-600 space-y-1 list-disc list-inside">
+            <ul className="text-[11px] text-gray-600 space-y-1 list-disc list-inside">
               <li>
                 <span className="font-medium">Pre-meeting prep:</span> skim new
                 retirement and portfolio papers before client or IC
@@ -294,7 +289,7 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
                 trade-offs clearly.
               </li>
             </ul>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-gray-500">
               LargeKite Capital is human-led. AI helps us read faster; it does
               not replace analysis, judgment, or suitability work.
             </p>
