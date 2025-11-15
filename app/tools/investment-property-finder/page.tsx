@@ -2,376 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { colors } from '@/app/lib/theme';
-
-type ViewMode = 'list' | 'grid' | 'map';
-type Strategy = 'rental' | 'appreciation' | 'short_term_rental';
-type SortKey = 'score' | 'capRate' | 'cashOnCash' | 'priceAsc' | 'priceDesc';
-
-interface RawProperty {
-  id: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  listPrice: number;
-  beds?: number;
-  baths?: number;
-  sqft?: number;
-  yearBuilt?: number;
-  hoaMonthly?: number;
-  imageUrl?: string;
-  images?: string[];
-  externalUrl?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-interface InvestmentMetrics {
-  estimatedRent: number;
-  annualExpenses: number;
-  annualNOI: number;
-  capRate: number;
-  cashOnCash: number;
-  projectedValueYearN: number;
-}
-
-interface ScoredProperty {
-  property: RawProperty;
-  metrics: InvestmentMetrics;
-  score: number;
-}
-
-interface SearchFormState {
-  zips: string;
-  minPrice: string;
-  maxPrice: string;
-  minBeds: string;
-  minBaths: string;
-  strategy: Strategy;
-  timeHorizonYears: string;
-  minCapRate: string;
-  maxHoa: string;
-}
-
-const defaultForm: SearchFormState = {
-  zips: '',
-  minPrice: '',
-  maxPrice: '',
-  minBeds: '',
-  minBaths: '',
-  strategy: 'rental',
-  timeHorizonYears: '5',
-  minCapRate: '',
-  maxHoa: '',
-};
-
-export default function InvestmentPropertyFinderPage() {
-  const [form, setForm] = useState<SearchFormState>(defaultForm);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [sortKey, setSortKey] = useState<SortKey>('score');
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<ScoredProperty[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const [selectedProperty, setSelectedProperty] = useState<ScoredProperty | null>(null);
-  const [showAssumptions, setShowAssumptions] = useState(false);
-  const [savedSearches, setSavedSearches] = useState<SearchFormState[]>([]);
-  const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
-  const [showCompareModal, setShowCompareModal] = useState(false);
-
-  const [assumptions, setAssumptions] = useState({
-    taxRate: 0.012,
-    insuranceRate: 0.004,
-    maintenanceRate: 0.1,
-    managementRate: 0.08,
-    vacancyRate: 0.05,
-    loanRate: 0.065,
-    downPayment: 0.25,
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const toggleCompare = (id: string) => {
-    setCompareIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setResults([]);
-
-    const zipList = form.zips
-      .split(',')
-      .map((z) => z.trim())
-      .filter((z) => z.length > 0);
-
-    if (!zipList.length) {
-      setError('Please enter at least one ZIP code');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const accumulated: ScoredProperty[] = [];
-
-      for (const zip of zipList) {
-        const payload = {
-          zip,
-          minPrice: form.minPrice ? Number(form.minPrice) : undefined,
-          maxPrice: form.maxPrice ? Number(form.maxPrice) : undefined,
-          minBeds: form.minBeds ? Number(form.minBeds) : undefined,
-          minBaths: form.minBaths ? Number(form.minBaths) : undefined,
-          strategy: form.strategy,
-          timeHorizonYears: Number(form.timeHorizonYears || '5'),
-        };
-
-        const res = await fetch('/api/investment-properties/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Search failed');
-        accumulated.push(...json.results);
-      }
-
-      setResults(accumulated);
-    } catch (err: any) {
-      setError(err.message || 'Server error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredSorted = useMemo(() => {
-    let arr = [...results];
-
-    if (form.minCapRate) {
-      const minCap = Number(form.minCapRate) / 100;
-      arr = arr.filter((r) => r.metrics.capRate >= minCap);
-    }
-    if (form.maxHoa) {
-      const maxHoa = Number(form.maxHoa);
-      arr = arr.filter((r) => (r.property.hoaMonthly || 0) <= maxHoa);
-    }
-
-    arr.sort((a, b) => {
-      switch (sortKey) {
-        case 'score':
-          return b.score - a.score;
-        case 'capRate':
-          return b.metrics.capRate - a.metrics.capRate;
-        case 'cashOnCash':
-          return b.metrics.cashOnCash - a.metrics.cashOnCash;
-        case 'priceAsc':
-          return a.property.listPrice - b.property.listPrice;
-        case 'priceDesc':
-          return b.property.listPrice - a.property.listPrice;
-        default:
-          return 0;
-      }
-    });
-
-    return arr;
-  }, [results, form.minCapRate, form.maxHoa, sortKey]);
-
-  const handleSaveSearch = () => setSavedSearches((prev) => [...prev, form]);
-  const loadSavedSearch = (s: SearchFormState) => setForm(s);
-
-  const anyCompare = compareIds.size > 0;
-  const compareList = filteredSorted.filter((r) => compareIds.has(r.property.id));
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* HEADER WITH CONSISTENT HORIZONTAL PADDING */}
-      <header
-        className="sticky top-0 z-30 text-slate-50 shadow-md"
-        style={{ backgroundColor: colors.brandNavy }}
-      >
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              LargeKite Capital · Investment Finder
-            </h1>
-            <p className="text-[11px] text-slate-300">
-              Data-driven screening by ZIP, price, and time horizon.
-            </p>
-          </div>
-
-          <div className="hidden md:block text-[11px] text-right text-slate-200">
-            {form.zips && (
-              <div>
-                ZIPs:{' '}
-                <span className="font-semibold" style={{ color: colors.brandTeal }}>
-                  {form.zips}
-                </span>
-              </div>
-            )}
-            {(form.minPrice || form.maxPrice) && (
-              <div>
-                Price:
-                {form.minPrice && ` $${Number(form.minPrice).toLocaleString()}+`}
-                {form.maxPrice && ` – $${Number(form.maxPrice).toLocaleString()}`}
-              </div>
-            )}
-            <div>
-              {form.timeHorizonYears} yrs ·{' '}
-              {form.strategy.replace(/_/g, ' ')}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
-            {anyCompare && (
-              <button
-                className="hidden sm:inline-flex px-3 py-1.5 text-[11px] rounded-full text-white"
-                style={{ backgroundColor: colors.brandTeal }}
-                onClick={() => setShowCompareModal(true)}
-              >
-                Compare ({compareIds.size})
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* MAIN CONTENT WITH CONSISTENT HORIZONTAL PADDING */}
-      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* SEARCH PANEL */}
-        <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-5 space-y-4">
-          <form onSubmit={handleSearch} className="grid gap-4 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <FieldLabel>ZIP Codes</FieldLabel>
-              <input
-                name="zips"
-                value={form.zips}
-                onChange={handleChange}
-                placeholder="e.g. 63011, 63021, 63141"
-                className="input-base"
-              />
-            </div>
-
-            <InputField
-              name="minPrice"
-              label="Min Price"
-              placeholder="200000"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="maxPrice"
-              label="Max Price"
-              placeholder="450000"
-              form={form}
-              handleChange={handleChange}
-            />
-
-            <InputField
-              name="minBeds"
-              label="Min Beds"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="minBaths"
-              label="Min Baths"
-              form={form}
-              handleChange={handleChange}
-            />
-
-            <SelectField
-              name="strategy"
-              label="Strategy"
-              form={form}
-              handleChange={handleChange}
-              options={[
-                { value: 'rental', label: 'Buy & Hold Rental' },
-                { value: 'appreciation', label: 'Appreciation Focused' },
-                { value: 'short_term_rental', label: 'Short-Term Rental' },
-              ]}
-            />
-
-            <SelectField
-              name="timeHorizonYears"
-              label="Horizon (yrs)"
-              form={form}
-              handleChange={handleChange}
-              options={[
-                { value: '3', label: '3' },
-                { value: '5', label: '5' },
-                { value: '10', label: '10' },
-              ]}
-            />
-
-            <InputField
-              name="minCapRate"
-              label="Min Cap Rate (%)"
-              placeholder="5"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="maxHoa"
-              label="Max HOA ($/mo)"
-              placeholder="250"
-              form={form}
-              handleChange={handleChange}
-            />
-
-            <div className="flex items-end gap-2 md:col-span-2">
-              <button
-                type="submit"
-                className="btn-primary w-full md:w-auto"
-                disabled={loading}
-              >
-                {loading ? 'Searching…' : 'Find Properties'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveSearch}
-                className="btn-ghost hidden md:inline-flex"
-              >
-                Save search
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowAssumptions(true)}
-                className="btn-ghost ml-auto"
-              >
-                Edit assumptions
-         
-
-You’re right to call that out — the page got big and a bit inconsistent.
-
-Here’s what I’ve done in this version:
-
-- Added **consistent padding** on the left (and right) using the same container pattern (`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8`) for both header and main.
-- Standardized input styles via `.input-base` and buttons via `.btn-primary` / `.btn-ghost`.
-- Kept your colors coming from a central `theme.ts`.
-
-Below is a **cleaned-up, complete, copy-paste-able** `page.tsx` that fixes the left padding issue and standardizes styles.
-
----
-
-### ✅ `app/tools/investment-property-finder/page.tsx`
-
-```tsx
-'use client';
-
-import { useMemo, useState } from 'react';
-import { colors } from '@/app/lib/theme';
 import { exportInvestmentPdf } from '@/app/lib/pdf/investmentReport';
 
 type ViewMode = 'list' | 'grid' | 'map';
@@ -566,7 +196,7 @@ export default function InvestmentPropertyFinderPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* HEADER with consistent left padding */}
+      {/* HEADER */}
       <header
         className="sticky top-0 z-30 text-slate-50 shadow-md"
         style={{ backgroundColor: colors.brandNavy }}
@@ -606,7 +236,8 @@ export default function InvestmentPropertyFinderPage() {
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
             {anyCompare && (
               <button
-                className="btn-primary hidden sm:inline-flex px-3 py-1.5 text-[11px]"
+                className="hidden sm:inline-flex px-3 py-1.5 text-[11px] rounded-full text-white"
+                style={{ backgroundColor: colors.brandTeal }}
                 onClick={() => setShowCompareModal(true)}
               >
                 Compare ({compareIds.size})
@@ -616,7 +247,7 @@ export default function InvestmentPropertyFinderPage() {
         </div>
       </header>
 
-      {/* MAIN with same horizontal padding */}
+      {/* MAIN */}
       <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* SEARCH PANEL */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-5 space-y-4">
@@ -628,7 +259,7 @@ export default function InvestmentPropertyFinderPage() {
                 value={form.zips}
                 onChange={handleChange}
                 placeholder="e.g. 63011, 63021, 63141"
-                className="input-base"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
               />
             </div>
 
@@ -702,7 +333,8 @@ export default function InvestmentPropertyFinderPage() {
             <div className="flex items-end gap-2 md:col-span-2">
               <button
                 type="submit"
-                className="btn-primary w-full md:w-auto"
+                className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+                style={{ backgroundColor: colors.brandTeal }}
                 disabled={loading}
               >
                 {loading ? 'Searching…' : 'Find Properties'}
@@ -711,7 +343,7 @@ export default function InvestmentPropertyFinderPage() {
               <button
                 type="button"
                 onClick={handleSaveSearch}
-                className="btn-ghost hidden md:inline-flex"
+                className="hidden md:inline-flex px-3 py-2 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
               >
                 Save search
               </button>
@@ -719,7 +351,7 @@ export default function InvestmentPropertyFinderPage() {
               <button
                 type="button"
                 onClick={() => setShowAssumptions(true)}
-                className="btn-ghost ml-auto"
+                className="ml-auto px-3 py-2 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
               >
                 Edit assumptions
               </button>
@@ -756,7 +388,7 @@ export default function InvestmentPropertyFinderPage() {
           <SortPills sortKey={sortKey} setSortKey={setSortKey} />
           <div className="flex items-center gap-2 text-[11px] text-slate-600">
             <span>{filteredSorted.length} properties</span>
-            {anyCompare && (
+            {compareIds.size > 0 && (
               <button
                 className="inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700"
                 onClick={() => setShowCompareModal(true)}
@@ -787,7 +419,10 @@ export default function InvestmentPropertyFinderPage() {
           {!loading && filteredSorted.length === 0 && !error && (
             <p className="text-sm text-slate-500">
               No results yet. Enter filters above and click{' '}
-              <span className="font-semibold" style={{ color: colors.brandTeal }}>
+              <span
+                className="font-semibold"
+                style={{ color: colors.brandTeal }}
+              >
                 Find Properties
               </span>
               .
@@ -808,10 +443,10 @@ export default function InvestmentPropertyFinderPage() {
                     <PropertyCard
                       key={item.property.id}
                       data={item}
+                      compact={false}
                       onSelect={() => setSelectedProperty(item)}
                       onToggleCompare={() => toggleCompare(item.property.id)}
                       isCompared={compareIds.has(item.property.id)}
-                      compact={false}
                     />
                   ))}
                 </div>
@@ -827,10 +462,10 @@ export default function InvestmentPropertyFinderPage() {
                       <PropertyCard
                         key={item.property.id}
                         data={item}
+                        compact
                         onSelect={() => setSelectedProperty(item)}
                         onToggleCompare={() => toggleCompare(item.property.id)}
                         isCompared={compareIds.has(item.property.id)}
-                        compact
                       />
                     ))}
                   </div>
@@ -841,7 +476,7 @@ export default function InvestmentPropertyFinderPage() {
         </section>
       </main>
 
-      {/* MODALS / DRAWERS */}
+      {/* DRAWER / MODALS */}
       {selectedProperty && (
         <PropertyDetailDrawer
           item={selectedProperty}
@@ -870,7 +505,7 @@ export default function InvestmentPropertyFinderPage() {
   );
 }
 
-/* ---------- SMALL SHARED UI HELPERS ---------- */
+/* ---------- SMALL FIELD HELPERS ---------- */
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -895,7 +530,7 @@ function InputField({
         value={form[name]}
         onChange={handleChange}
         placeholder={placeholder}
-        className="input-base"
+        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
       />
     </div>
   );
@@ -915,7 +550,7 @@ function SelectField({
         name={name}
         value={form[name]}
         onChange={handleChange}
-        className="input-base"
+        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
       >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
@@ -1163,7 +798,7 @@ function PropertyDetailDrawer({
 }: any) {
   const { property, metrics, score } = item;
 
-  const projection = [];
+  const projection: { year: number; value: number }[] = [];
   const start = property.listPrice;
   const end = metrics.projectedValueYearN;
   const growth = Math.pow(end / start, 1 / (horizon || 1));
@@ -1173,7 +808,7 @@ function PropertyDetailDrawer({
       value: Math.round(start * Math.pow(growth, y)),
     });
   }
-  const maxVal = Math.max(...projection.map((p: any) => p.value));
+  const maxVal = Math.max(...projection.map((p) => p.value));
 
   const handleExportPdf = async () => {
     await exportInvestmentPdf({
@@ -1196,7 +831,10 @@ function PropertyDetailDrawer({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn-ghost text-[11px]" onClick={handleExportPdf}>
+            <button
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+              onClick={handleExportPdf}
+            >
               Export PDF
             </button>
             <button
@@ -1270,17 +908,15 @@ function PropertyDetailDrawer({
               Value Projection
             </h3>
             <svg viewBox="0 0 100 40" className="w-full h-32 mt-2">
-              {projection.map((p: any, i: number) => {
+              {projection.map((p, i) => {
                 if (i === 0) return null;
                 const prev = projection[i - 1];
                 const x1 = (prev.year / horizon) * 90 + 5;
                 const x2 = (p.year / horizon) * 90 + 5;
                 const y1 =
-                  35 -
-                  ((prev.value - start) / (maxVal - start || 1)) * 30;
+                  35 - ((prev.value - start) / (maxVal - start || 1)) * 30;
                 const y2 =
-                  35 -
-                  ((p.value - start) / (maxVal - start || 1)) * 30;
+                  35 - ((p.value - start) / (maxVal - start || 1)) * 30;
                 return (
                   <line
                     key={i}
@@ -1361,7 +997,7 @@ function AssumptionModal({
             <div key={key}>
               <FieldLabel>{label}</FieldLabel>
               <input
-                className="input-base text-[11px] py-1"
+                className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500/70"
                 value={(
                   assumptions[key as keyof typeof assumptions] * 100
                 ).toString()}
@@ -1480,15 +1116,3 @@ function CompareModal({ items, onClose }: any) {
     </div>
   );
 }
-
-/* ---------- STANDARDIZED UTILITY CLASSES ---------- */
-/* Tailwind plugin style: you can drop these into globals.css if you prefer,
-   but using them as className strings keeps everything consistent. */
-
-/* In your tailwind setup you can add:
-   @layer components {
-     .input-base { @apply w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70; }
-     .btn-primary { @apply inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 disabled:opacity-60; }
-     .btn-ghost { @apply inline-flex items-center justify-center px-3 py-2 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50; }
-   }
-*/
