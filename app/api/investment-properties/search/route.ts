@@ -1,39 +1,47 @@
 // app/api/investment-properties/search/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getPropertyDataProvider } from '@/app/lib/data';
-import { InvestmentSearchParams } from '@/app/lib/types/investment';
-import { scoreProperty } from '@/app/lib/investment/analyzer';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const {
+      zip,
+      minPrice,
+      maxPrice,
+      minBeds,
+      minBaths,
+      strategy,
+      timeHorizonYears,
+    } = body;
 
-    const params: InvestmentSearchParams = {
-      zip: String(body.zip),
-      minPrice: body.minPrice ? Number(body.minPrice) : undefined,
-      maxPrice: body.maxPrice ? Number(body.maxPrice) : undefined,
-      minBeds: body.minBeds ? Number(body.minBeds) : undefined,
-      minBaths: body.minBaths ? Number(body.minBaths) : undefined,
-      propertyTypes: body.propertyTypes || [],
-      strategy: body.strategy || 'rental',
-      timeHorizonYears: Number(body.timeHorizonYears || 5),
-    };
+    const listings = await fetchRealtorListingsByZip(zip);
 
-    if (!/^\d{5}$/.test(params.zip)) {
-      return NextResponse.json({ error: 'Invalid ZIP code' }, { status: 400 });
-    }
+    // (optionally filter further in your own code)
+    const filtered = listings.filter((l) => {
+      if (minPrice && l.list_price < minPrice) return false;
+      if (maxPrice && l.list_price > maxPrice) return false;
+      if (minBeds && (l.description?.beds || 0) < minBeds) return false;
+      if (minBaths && Number(l.description?.baths_consolidated || 0) < minBaths)
+        return false;
+      return true;
+    });
 
-    const provider = getPropertyDataProvider();
-    const rawProperties = await provider.searchProperties(params);
+    const rawProperties = filtered.map((r) => mapRealtorResultToRawProperty(r, zip));
 
-    const scored = rawProperties
-      .map((p) => scoreProperty(p, params))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 50); // cap results
+    // here you run your investment metric engine to get ScoredProperty[]
+    const scored = rawProperties.map((p) =>
+      scoreProperty(p, {
+        strategy,
+        horizonYears: timeHorizonYears,
+      })
+    );
 
     return NextResponse.json({ results: scored });
   } catch (err: any) {
-    console.error('Search error', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error(err);
+    return NextResponse.json(
+      { error: err.message || 'Server error' },
+      { status: 500 }
+    );
   }
 }
