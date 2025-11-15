@@ -5,9 +5,9 @@ export type SummaryLevel = "base" | "more" | "max";
 
 export interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[]; // UI: Highlights
-  keyPoints: string[];    // UI: Details
-  rawText: string;
+  keyTakeaways: string[]; // UI shows as "Highlights"
+  keyPoints: string[];    // UI shows as "Details"
+  rawText: string;        // raw JSON from the model
 }
 
 const client = new OpenAI({
