@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { colors, typography } from '@/app/lib/theme';
 
 type ViewMode = 'list' | 'grid' | 'map';
 type Strategy = 'rental' | 'appreciation' | 'short_term_rental';
@@ -208,7 +209,7 @@ export default function InvestmentPropertyFinderPage() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* -------- HEADER -------- */}
-      <header className="sticky top-0 z-30 bg-[#071629] text-slate-50 shadow-md">
+      <header className="sticky top-0 z-30 text-slate-50 shadow-md" style={{ backgroundColor: colors.brandNavy }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">LargeKite Capital · Investment Finder</h1>
@@ -306,14 +307,15 @@ export default function InvestmentPropertyFinderPage() {
             {/* ACTION BUTTONS */}
             <div className="flex items-end gap-2 md:col-span-2">
               <button
-                type="submit"
-                className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg 
-                           bg-[#14b8a6] hover:bg-[#0d9488] text-sm font-semibold text-white
-                           disabled:opacity-60"
-                disabled={loading}
-              >
-                {loading ? 'Searching…' : 'Find Properties'}
-              </button>
+  type="submit"
+  className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+  style={{ backgroundColor: colors.brandTeal }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.brandTealDark)}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.brandTeal)}
+>
+  {loading ? 'Searching…' : 'Find Properties'}
+</button>
+
 
               <button
                 type="button"
