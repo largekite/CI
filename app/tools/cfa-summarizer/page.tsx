@@ -207,6 +207,22 @@ export default function SummarizerPage() {
                 >
                   {loadingUrl ? "Summarizing..." : "Summarize URL"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeUrl("more")}
+                  disabled={loadingUrl}
+                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  More detail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeUrl("max")}
+                  disabled={loadingUrl}
+                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  Max detail
+                </button>
                 </div>
             {/* Textarea section */}
             <div className="space-y-2">
