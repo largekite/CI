@@ -1,10 +1,12 @@
 // app/lib/summarizeCfaArticle.ts
 import OpenAI from "openai";
 
+export type SummaryLevel = "base" | "more" | "max";
+
 export interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[];
-  keyPoints: string[];
+  keyTakeaways: string[]; // UI: Highlights
+  keyPoints: string[];    // UI: Details
   rawText: string;
 }
 
@@ -14,38 +16,50 @@ const client = new OpenAI({
 
 export async function summarizeCfaArticle(
   articleText: string,
-  detail: boolean = false
+  level: SummaryLevel = "base"
 ): Promise<ArticleSummary> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is not set");
   }
 
-  // ---- Core difference: FORCE higher bullet count ----
-  const modeInstruction = detail
-    ? `
-Create a richer and more comprehensive summary.
-
-Requirements:
-- Provide AT LEAST **6–10 bullet points** in "Highlights".
-- Provide AT LEAST **10–18 bullet points** in "Details".
-- Include deeper explanations and more nuance.
-- Cover methodology, assumptions, results, implications, and context.
-- Include smaller insights that may not be headline results.
-- Be exhaustive but still structured and readable.
-`
-    : `
+  const modeInstruction =
+    level === "base"
+      ? `
 Create a concise summary.
 
 Requirements:
-- Provide **3–5 bullet points** in "Highlights".
-- Provide **5–8 bullet points** in "Details".
-- Only include the most essential content.
+- "keyTakeaways": 3–5 high-level bullet points.
+- "keyPoints": 5–8 more detailed bullet points.
+- Focus only on the most essential information.
+`
+      : level === "more"
+      ? `
+Create a more detailed summary.
+
+Requirements:
+- "keyTakeaways": 6–10 bullet points with clear highlights.
+- "keyPoints": 10–18 bullet points with more depth.
+- Cover main idea, methodology, key results, implications, and key limitations.
+`
+      : `
+Create a very detailed and exhaustive summary.
+
+Requirements:
+- "keyTakeaways": 8–12 bullet points capturing all important highlights.
+- "keyPoints": 16–25 bullet points with deep detail.
+- Cover:
+  - Motivation and problem setup
+  - Data and methodology
+  - Core results
+  - Robustness or sensitivity points
+  - Limitations and caveats
+  - Practical or conceptual implications
+- Include smaller yet relevant insights as separate bullets.
 `;
 
   const systemPrompt = `
-You summarize finance, research, and CFA/FAJ articles.
-
-You MUST return ONLY valid JSON. No commentary.
+You summarize finance and research articles.
+You MUST respond ONLY with valid JSON and nothing else.
 `.trim();
 
   const userPrompt = `
@@ -61,7 +75,7 @@ Return STRICT JSON with this shape:
 
 Definitions:
 - "keyTakeaways" = high-level highlights
-- "keyPoints"   = deeper details / findings / supporting analysis
+- "keyPoints"   = deeper details, supporting analysis, and nuance.
 
 Article:
 """${articleText}"""
@@ -73,7 +87,7 @@ Article:
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: detail ? 0.5 : 0.2,
+    temperature: level === "base" ? 0.2 : level === "more" ? 0.4 : 0.5,
     response_format: { type: "json_object" },
   });
 
@@ -90,7 +104,8 @@ Article:
 
   try {
     parsed = JSON.parse(content);
-  } catch {
+  } catch (err) {
+    console.error("Failed to parse JSON from model:", err, "Raw:", content);
     throw new Error("Failed to parse model JSON.");
   }
 
