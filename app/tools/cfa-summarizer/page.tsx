@@ -13,19 +13,40 @@ type SummaryLevel = "base" | "more" | "max";
 
 const MAX_CHARS = 20000;
 
-// Simple helper: extract text from files (no pdfjs)
 async function extractTextFromFile(file: File): Promise<string> {
   const lowerName = file.name.toLowerCase();
 
+  // PDF → send to server to extract text
   if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
-    throw new Error(
-      "PDF files are not supported by the uploader yet. Please copy/paste the text or upload a .txt/.md file."
-    );
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    // Convert to base64
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    const res = await fetch("/api/pdf-to-text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: base64 }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || "Failed to extract text from PDF.");
+    }
+
+    const data = await res.json();
+    return String(data.text || "");
   }
 
-  // For plain text / markdown / etc.
+  // Non-PDF → use plain text
   return await file.text();
 }
+
 
 export default function SummarizerPage() {
   const [articleText, setArticleText] = useState("");
