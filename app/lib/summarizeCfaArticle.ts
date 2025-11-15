@@ -5,7 +5,7 @@ export interface ArticleSummary {
   title?: string;
   keyTakeaways: string[];
   keyPoints: string[];
-  rawText: string; // original model output (for debugging / display)
+  rawText: string;
 }
 
 const client = new OpenAI({
@@ -13,52 +13,52 @@ const client = new OpenAI({
 });
 
 export async function summarizeCfaArticle(
-  articleText: string
+  articleText: string,
+  detail: boolean = false
 ): Promise<ArticleSummary> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is not set");
   }
 
+  const modeInstruction = detail
+    ? "Provide more depth and nuance, with more specific key points and slightly longer explanations."
+    : "Keep the summary concise and focused on the most important practitioner-facing points.";
+
   const systemPrompt = `
 You are a CFA charterholder and experienced investment practitioner.
 
-Your job is to summarize a CFA Institute / Financial Analysts Journal research article
-for a busy portfolio manager who will NOT read the full paper.
-
-Return a JSON object ONLY, no extra text.
+Your job is to summarize CFA / academic finance articles for a busy reader.
+Return ONLY JSON with the requested fields.
 `.trim();
 
   const userPrompt = `
-Summarize the following CFA research article excerpt for a practitioner.
+${modeInstruction}
 
 Return STRICT JSON with this shape:
 
 {
-  "title": string,                       // short inferred title
-  "keyTakeaways": string[],              // 3–7 key practitioner takeaways
-  "keyPoints": string[]                  // 5–10 bullets: idea, method, findings, implications
+  "title": string,
+  "keyTakeaways": string[],
+  "keyPoints": string[]
 }
-
-Do NOT wrap it in markdown. Do NOT add explanations outside the JSON.
 
 Article:
 """${articleText}"""
 `.trim();
 
-  // Ask the model to obey JSON format directly
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini", // or "gpt-4o" / "gpt-4.1-mini" etc.
+    model: "gpt-4o-mini", // or another compatible model
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.2,
-    response_format: { type: "json_object" }, // <– force JSON
+    temperature: detail ? 0.4 : 0.2,
+    response_format: { type: "json_object" },
   });
 
   const content = completion.choices[0]?.message?.content;
   if (!content) {
-    throw new Error("OpenAI returned an empty response.");
+    throw new Error("Empty response from OpenAI.");
   }
 
   let parsed: {
@@ -69,17 +69,14 @@ Article:
 
   try {
     parsed = JSON.parse(content);
-  } catch (e) {
-    // Fallback: if somehow parsing fails, at least surface raw text
-    throw new Error(
-      "Failed to parse model JSON. Raw content: " + content.toString()
-    );
+  } catch {
+    throw new Error("Failed to parse model JSON.");
   }
 
   return {
     title: parsed.title || undefined,
     keyTakeaways: parsed.keyTakeaways ?? [],
     keyPoints: parsed.keyPoints ?? [],
-    rawText: content.toString(),
+    rawText: content,
   };
 }
