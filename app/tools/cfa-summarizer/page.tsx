@@ -197,32 +197,6 @@ export default function SummarizerPage() {
                 placeholder="https://example.com/article..."
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
-              <div className="flex flex-wrap gap-2 text-xs mt-1">
-                <button
-                  type="button"
-                  onClick={() => summarizeUrl("base")}
-                  disabled={loadingUrl}
-                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
-                >
-                  {loadingUrl ? "Summarizing..." : "Summarize URL"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => summarizeUrl("more")}
-                  disabled={loadingUrl}
-                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
-                >
-                  URL – More detail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => summarizeUrl("max")}
-                  disabled={loadingUrl}
-                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
-                >
-                  URL – Even more
-                </button>
-              </div>
             </div>
 
             {/* Textarea section */}
@@ -260,7 +234,7 @@ export default function SummarizerPage() {
                   disabled={loadingText}
                   className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
                 >
-                  Text – More detail
+                  More detail
                 </button>
                 <button
                   type="button"
@@ -268,7 +242,7 @@ export default function SummarizerPage() {
                   disabled={loadingText}
                   className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
                 >
-                  Text – Even more
+                  Max detail
                 </button>
                 <button
                   type="button"
