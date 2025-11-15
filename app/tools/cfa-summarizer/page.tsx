@@ -26,7 +26,7 @@ export default function CfaSummarizerPage() {
     setCopied(false);
 
     if (!articleText.trim()) {
-      setError("Please paste some article text.");
+      setError("Please paste article text.");
       return;
     }
 
@@ -40,12 +40,12 @@ export default function CfaSummarizerPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.details || data?.error || `Request failed`);
+        throw new Error(data?.details || data?.error || "Request failed");
       }
 
       const data = (await res.json()) as ArticleSummary;
       setSummary(data);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setError("Unable to generate summary.");
     } finally {
@@ -66,11 +66,13 @@ export default function CfaSummarizerPage() {
     const lines: string[] = [];
 
     if (summary.title) lines.push(`Title: ${summary.title}\n`);
+
     if (summary.keyTakeaways?.length) {
       lines.push("Key Takeaways:");
       summary.keyTakeaways.forEach((t) => lines.push(`- ${t}`));
       lines.push("");
     }
+
     if (summary.keyPoints?.length) {
       lines.push("Key Points:");
       summary.keyPoints.forEach((p) => lines.push(`- ${p}`));
@@ -80,7 +82,9 @@ export default function CfaSummarizerPage() {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      // ignore clipboard failure
+    }
   }
 
   function handleUseSample() {
@@ -95,74 +99,76 @@ The withdrawal budget formula allows for a nonconstant sequence of withdrawal ta
 
   return (
     <div className="space-y-8">
-      {/* HEADER */}
-      <header className="space-y-3">
+      {/* Header */}
+      <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-          Research Summarizer
+          CFA Summarizer
         </h1>
-        <p className="text-sm text-gray-700 max-w-3xl">
-          Paste text from a CFA or academic article to generate key takeaways
-          and key points.
+        <p className="text-sm text-gray-700 max-w-2xl">
+          Paste article text to generate key takeaways and key points.
         </p>
       </header>
 
+      {/* Layout */}
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        {/* LEFT: INPUT */}
+        {/* Left: input card */}
         <section className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">
-                Article text
-              </span>
-              <span className="text-xs text-gray-500">
-                {charCount.toLocaleString()} / {maxChars.toLocaleString()}
-              </span>
-            </div>
-
-            <textarea
-              className="w-full min-h-[260px] rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
-              placeholder="Paste article text here..."
-              value={articleText}
-              maxLength={maxChars}
-              onChange={(e) => setArticleText(e.target.value)}
-            />
-
-            {error && (
-              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {error}
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">
+                  Article text
+                </span>
+                <span className="text-xs text-gray-500">
+                  {charCount.toLocaleString()} / {maxChars.toLocaleString()}
+                </span>
               </div>
-            )}
 
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
-              >
-                {loading ? "Summarizing..." : "Summarize"}
-              </button>
+              <textarea
+                className="w-full min-h-[260px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+                placeholder="Paste article text here..."
+                value={articleText}
+                maxLength={maxChars}
+                onChange={(e) => setArticleText(e.target.value)}
+              />
 
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Clear
-              </button>
+              {error && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={handleUseSample}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Sample
-              </button>
-            </div>
-          </form>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+                >
+                  {loading ? "Summarizing..." : "Summarize"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleUseSample}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Sample
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
 
-        {/* RIGHT: SUMMARY */}
-        <section className="space-y-4">
+        {/* Right: summary card */}
+        <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
             {loading && (
               <div className="flex-1 flex items-center justify-center text-sm text-gray-500">
