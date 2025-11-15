@@ -28,15 +28,21 @@ export default function RootLayout({
 
             {/* RIGHT: Navigation links */}
             <div className="flex items-center gap-6">
-              {/* === NEW FEATURE: CFA Article Summarizer === */}
               <Link
                 href="/tools/cfa-summarizer"
                 className="text-sm hover:text-blue-600 transition"
               >
-                CFA Summarizer
+               Summarizer
+              </Link>
+              <Link
+              href="/invest"
+              className="text-sm font-medium text-slate-700 hover:text-[#14b8a6]"
+               >
+               Investment Property Finder
               </Link>
 
             </div>
+            
           </div>
         </nav>
 
