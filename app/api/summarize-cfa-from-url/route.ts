@@ -1,25 +1,17 @@
+// app/api/summarize-cfa-from-url/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import {
+  summarizeCfaArticle,
+  type SummaryLevel,
+} from "../../lib/summarizeCfaArticle";
 
 export const runtime = "nodejs";
-
-function extractTextFromHtml(html: string): string {
-  // Strip scripts/styles first
-  let cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, "");
-  cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
-
-  // Remove all tags
-  cleaned = cleaned.replace(/<[^>]+>/g, " ");
-
-  // Collapse whitespace
-  cleaned = cleaned.replace(/\s+/g, " ");
-
-  return cleaned.trim();
-}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const url = body?.url as string | undefined;
+    const levelRaw = body?.level as string | undefined;
 
     if (!url || typeof url !== "string") {
       return NextResponse.json(
@@ -28,7 +20,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Basic safety: only http(s)
     if (!/^https?:\/\//i.test(url)) {
       return NextResponse.json(
         { error: "URL must start with http:// or https://." },
@@ -46,18 +37,24 @@ export async function POST(req: NextRequest) {
     }
 
     const html = await res.text();
-    const text = extractTextFromHtml(html);
 
-    // Hard cap to keep it reasonable
     const MAX_CHARS = 20000;
-    const trimmed = text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text;
+    const trimmed =
+      html.length > MAX_CHARS ? html.slice(0, MAX_CHARS) : html;
 
-    return NextResponse.json({ text: trimmed }, { status: 200 });
+    const allowedLevels: SummaryLevel[] = ["base", "more", "max"];
+    const level: SummaryLevel = allowedLevels.includes(levelRaw as SummaryLevel)
+      ? (levelRaw as SummaryLevel)
+      : "base";
+
+    const summary = await summarizeCfaArticle(trimmed, level);
+
+    return NextResponse.json(summary, { status: 200 });
   } catch (err: any) {
-    console.error("fetch-article-text error:", err);
+    console.error("summarize-cfa-from-url error:", err);
     return NextResponse.json(
       {
-        error: "Failed to fetch or parse article.",
+        error: "Failed to summarize URL",
         details: err?.message ?? "Unknown error",
       },
       { status: 500 }
