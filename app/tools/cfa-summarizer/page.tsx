@@ -1,4 +1,3 @@
-// app/tools/cfa-summarizer/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -15,14 +14,19 @@ export default function CfaSummarizerPage() {
   const [summary, setSummary] = useState<ArticleSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const charCount = articleText.length;
+  const maxChars = 20000;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSummary(null);
+    setCopied(false);
 
     if (!articleText.trim()) {
-      setError("Please paste the article text first.");
+      setError("Please paste some article text first.");
       return;
     }
 
@@ -36,90 +40,267 @@ export default function CfaSummarizerPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || `Request failed with ${res.status}`);
+        throw new Error(data?.details || data?.error || `Request failed`);
       }
 
       const data = (await res.json()) as ArticleSummary;
       setSummary(data);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Something went wrong while summarizing.");
     } finally {
       setLoading(false);
     }
   }
 
+  function handleClear() {
+    setArticleText("");
+    setSummary(null);
+    setError(null);
+    setCopied(false);
+  }
+
+  async function handleCopySummary() {
+    if (!summary) return;
+    const textLines: string[] = [];
+
+    if (summary.title) {
+      textLines.push(`Title: ${summary.title}`, "");
+    }
+    if (summary.keyTakeaways?.length) {
+      textLines.push("Key Takeaways:");
+      summary.keyTakeaways.forEach((t) => textLines.push(`- ${t}`));
+      textLines.push("");
+    }
+    if (summary.keyPoints?.length) {
+      textLines.push("Key Points:");
+      summary.keyPoints.forEach((p) => textLines.push(`- ${p}`));
+    }
+
+    const finalText = textLines.join("\n");
+
+    try {
+      await navigator.clipboard.writeText(finalText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore clipboard failures
+    }
+  }
+
+  function handleUseSample() {
+    const sample = `Time-Varying Spending Targets
+
+The withdrawal budget formula allows for a nonconstant sequence of withdrawal targets. A specific example of non-constant withdrawals would be to plan for an income stream with the shape of Blanchett (2014)’s “retirement spending smile.” He found that spending is highest in the early, healthiest, most active years of retirement, then declining over several years as the retiree becomes more sedentary before increasing again to satisfy greater healthcare needs.`;
+    setArticleText(sample);
+    setSummary(null);
+    setError(null);
+    setCopied(false);
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold">
-          CFA Research Article Summarizer
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+      {/* Header */}
+      <header className="space-y-3">
+        <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-blue-800">
+          LargeKite Capital · Research Tool
+        </span>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+          Research Summarizer for CFA & Academic Articles
         </h1>
-        <p className="text-sm text-gray-600">
-          Paste a CFA Institute / Financial Analysts Journal article (text only),
-          and LargeKite Capital will generate key takeaways and practitioner
-          points for you.
+        <p className="text-sm text-slate-600 max-w-3xl">
+          We use this tool to convert dense retirement, factor, and portfolio
+          research into concise, practitioner-ready takeaways. AI does the first
+          pass;{" "}
+          <span className="font-medium text-slate-900">
+            final judgment remains human.
+          </span>
         </p>
+      </header>
+
+      {/* Main layout */}
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        {/* Left: input panel */}
+        <section className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-900">
+                Article text
+              </span>
+              <span className="text-xs text-slate-400">
+                {charCount.toLocaleString()} / {maxChars.toLocaleString()} chars
+              </span>
+            </div>
+
+            <textarea
+              className="w-full min-h-[260px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400/50 focus:border-sky-500"
+              placeholder="Paste the article text here (e.g., abstract + main body from a CFA Institute / FAJ paper)..."
+              value={articleText}
+              maxLength={maxChars}
+              onChange={(e) => setArticleText(e.target.value)}
+            />
+
+            {error && (
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center justify-center rounded-xl bg-blue-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-950 disabled:opacity-60"
+              >
+                {loading ? "Summarizing..." : "Summarize article"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-xs text-slate-500 hover:text-slate-700"
+              >
+                Clear
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseSample}
+                className="text-xs text-slate-500 hover:text-slate-700"
+              >
+                Use sample text
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-1 text-[11px] text-slate-500">
+            <p>
+              For best results, include at least the abstract and main body. We
+              typically skip references and footnotes.
+            </p>
+            <p>
+              Internally, we pair this with the original PDF and a human review
+              before incorporating any idea into portfolios or client work.
+            </p>
+          </div>
+        </section>
+
+        {/* Right: summary panel */}
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
+            {!summary && !loading && !error && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-sm text-slate-500 px-4">
+                <div className="mb-2 text-base font-medium text-slate-800">
+                  Summary will appear here
+                </div>
+                <p>
+                  Paste an article on the left and click{" "}
+                  <span className="font-medium text-slate-900">
+                    Summarize article
+                  </span>{" "}
+                  to see key takeaways and practitioner points.
+                </p>
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex-1 flex flex-col items-center justify-center text-sm text-slate-500">
+                <div className="animate-pulse mb-2 text-base font-medium text-slate-800">
+                  Generating summary…
+                </div>
+                <p>Extracting spending rules, risk insights, and trade-offs.</p>
+              </div>
+            )}
+
+            {summary && !loading && (
+              <div className="space-y-4 flex-1">
+                {summary.title && (
+                  <div className="border-b border-slate-100 pb-3">
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      {summary.title}
+                    </h2>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Model-generated summary. We always cross-check with the
+                      original paper.
+                    </p>
+                  </div>
+                )}
+
+                {summary.keyTakeaways?.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Key takeaways
+                    </h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
+                      {summary.keyTakeaways.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {summary.keyPoints?.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Key points
+                    </h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-slate-700">
+                      {summary.keyPoints.map((p, i) => (
+                        <li key={i}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Footer controls */}
+            <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500">
+              <div>
+                This tool summarizes research for discussion. It is not
+                investment advice or a recommendation to act.
+              </div>
+
+              {summary && !loading && (
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  className="text-[11px] font-medium text-sky-600 hover:text-sky-700"
+                >
+                  {copied ? "Copied" : "Copy summary"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* How we use this in practice */}
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
+              How we use this in practice
+            </h3>
+            <ul className="text-[11px] text-slate-600 space-y-1 list-disc list-inside">
+              <li>
+                <span className="font-medium">Pre-meeting prep:</span> skim new
+                retirement and portfolio papers before client or IC
+                conversations.
+              </li>
+              <li>
+                <span className="font-medium">Idea triage:</span> decide which
+                research merits a full read and model replication.
+              </li>
+              <li>
+                <span className="font-medium">Risk discussion support:</span>{" "}
+                pull out key risk, assumption, and limitation language to frame
+                trade-offs clearly.
+              </li>
+            </ul>
+            <p className="text-[11px] text-slate-500">
+              LargeKite Capital is human-led. AI helps us read faster; it does
+              not replace analysis, judgment, or suitability work.
+            </p>
+          </div>
+        </section>
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block text-sm font-medium">
-          Article Text
-          <textarea
-            className="mt-1 w-full min-h-[220px] rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-500/40"
-            placeholder="Paste the article text here (e.g., from PDF copy)..."
-            value={articleText}
-            onChange={(e) => setArticleText(e.target.value)}
-          />
-        </label>
-
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
-          >
-            {loading ? "Summarizing..." : "Summarize Article"}
-          </button>
-          {error && (
-            <span className="text-sm text-red-600">
-              {error}
-            </span>
-          )}
-        </div>
-      </form>
-
-      {summary && (
-        <div className="space-y-6 border rounded-2xl p-5 bg-white shadow-sm">
-          {summary.title && (
-            <div>
-              <h2 className="text-xl font-semibold">{summary.title}</h2>
-            </div>
-          )}
-
-          {summary.keyTakeaways?.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Key Takeaways</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                {summary.keyTakeaways.map((t, i) => (
-                  <li key={i}>{t}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {summary.keyPoints?.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Key Points</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                {summary.keyPoints.map((p, i) => (
-                  <li key={i}>{p}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
