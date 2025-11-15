@@ -13,36 +13,17 @@ type SummaryLevel = "base" | "more" | "max";
 
 const MAX_CHARS = 20000;
 
-// Helper: extract text from TXT / MD / PDF files
+// Simple helper: extract text from files (no pdfjs)
 async function extractTextFromFile(file: File): Promise<string> {
   const lowerName = file.name.toLowerCase();
 
-  // PDF handling
   if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
-    const arrayBuffer = await file.arrayBuffer();
-
-    // Dynamic import for pdfjs (avoids build-time issues)
-    const pdfjsLib: any = await import("pdfjs-dist");
-    const pdfjsWorker: any = await import("pdfjs-dist/build/pdf.worker.mjs");
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-    });
-    const pdf = await loadingTask.promise;
-
-    let fullText = "";
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str || "").join(" ");
-      fullText += strings + "\n\n";
-    }
-    return fullText;
+    throw new Error(
+      "PDF files are not supported by the uploader yet. Please copy/paste the text or upload a .txt/.md file."
+    );
   }
 
-  // Fallback: plain text formats
+  // For plain text / markdown / etc.
   return await file.text();
 }
 
@@ -111,9 +92,9 @@ export default function SummarizerPage() {
       setSummary(null);
       setCopied(false);
       setError(msg);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Unable to read file.");
+      setError(err?.message || "Unable to read file.");
     }
   }
 
@@ -223,10 +204,10 @@ export default function SummarizerPage() {
 
             <div className="flex flex-col gap-2 text-xs text-gray-600">
               <label className="inline-flex items-center gap-2">
-                <span>Upload (txt / md / pdf):</span>
+                <span>Upload (txt / md / text):</span>
                 <input
                   type="file"
-                  accept=".txt,.md,.text,application/pdf"
+                  accept=".txt,.md,.text"
                   onChange={handleFileUpload}
                   className="text-xs"
                 />
