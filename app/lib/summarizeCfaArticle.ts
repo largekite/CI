@@ -3,9 +3,9 @@ import OpenAI from "openai";
 
 export interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[]; // UI label: "Highlights"
-  keyPoints: string[];    // UI label: "Details"
-  rawText: string;        // raw JSON from the model (for debugging if needed)
+  keyTakeaways: string[];
+  keyPoints: string[];
+  rawText: string;
 }
 
 const client = new OpenAI({
@@ -20,14 +20,32 @@ export async function summarizeCfaArticle(
     throw new Error("OPENAI_API_KEY is not set");
   }
 
+  // ---- Core difference: FORCE higher bullet count ----
   const modeInstruction = detail
-    ? "Provide more depth and nuance, with more specific points and slightly longer explanations."
-    : "Keep the summary concise and focused on the most important points.";
+    ? `
+Create a richer and more comprehensive summary.
+
+Requirements:
+- Provide AT LEAST **6–10 bullet points** in "Highlights".
+- Provide AT LEAST **10–18 bullet points** in "Details".
+- Include deeper explanations and more nuance.
+- Cover methodology, assumptions, results, implications, and context.
+- Include smaller insights that may not be headline results.
+- Be exhaustive but still structured and readable.
+`
+    : `
+Create a concise summary.
+
+Requirements:
+- Provide **3–5 bullet points** in "Highlights".
+- Provide **5–8 bullet points** in "Details".
+- Only include the most essential content.
+`;
 
   const systemPrompt = `
-You summarize finance and research articles for a busy reader.
+You summarize finance, research, and CFA/FAJ articles.
 
-You MUST respond ONLY with valid JSON.
+You MUST return ONLY valid JSON. No commentary.
 `.trim();
 
   const userPrompt = `
@@ -41,20 +59,21 @@ Return STRICT JSON with this shape:
   "keyPoints": string[]
 }
 
-- "keyTakeaways" should be a short list of the most important highlights.
-- "keyPoints" can go into more detail and include additional points.
+Definitions:
+- "keyTakeaways" = high-level highlights
+- "keyPoints"   = deeper details / findings / supporting analysis
 
 Article:
 """${articleText}"""
 `.trim();
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini", // adjust if you prefer another model
+    model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: detail ? 0.4 : 0.2,
+    temperature: detail ? 0.5 : 0.2,
     response_format: { type: "json_object" },
   });
 
@@ -71,8 +90,7 @@ Article:
 
   try {
     parsed = JSON.parse(content);
-  } catch (err) {
-    console.error("Failed to parse JSON from model:", err, "Raw:", content);
+  } catch {
     throw new Error("Failed to parse model JSON.");
   }
 
