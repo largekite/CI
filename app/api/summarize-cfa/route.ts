@@ -2,12 +2,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { summarizeCfaArticle } from "../../lib/summarizeCfaArticle";
 
-
-export const runtime = "nodejs"; // safer for the OpenAI client than "edge"
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { articleText } = await req.json();
+    const body = await req.json();
+    const articleText = body?.articleText;
+    const detail = Boolean(body?.detail); // <-- read the flag
 
     if (!articleText || typeof articleText !== "string") {
       return NextResponse.json(
@@ -16,20 +17,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Optional: soft cap to avoid huge payloads
+    // Defensive truncation on the server as well
+    const MAX_CHARS = 20000;
     const trimmedText =
-      articleText.length > 20000
-        ? articleText.slice(0, 20000)
+      articleText.length > MAX_CHARS
+        ? articleText.slice(0, MAX_CHARS)
         : articleText;
 
-    const summary = await summarizeCfaArticle(trimmedText);
+    const summary = await summarizeCfaArticle(trimmedText, detail);
 
     return NextResponse.json(summary, { status: 200 });
   } catch (err: any) {
     console.error("summarize-cfa error:", err);
     return NextResponse.json(
       {
-        error: "Failed to summarize article.",
+        error: "Failed to summarize article",
         details: err?.message ?? "Unknown error",
       },
       { status: 500 }
