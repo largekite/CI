@@ -228,7 +228,7 @@ export default function SummarizerPage() {
                 <span>Upload (txt / md / text):</span>
                 <input
                   type="file"
-                  accept=".txt,.md,.text"
+                  accept=".txt,.md,.text,application/pdf"
                   onChange={handleFileUpload}
                   className="text-xs"
                 />
