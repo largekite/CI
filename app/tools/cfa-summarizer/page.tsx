@@ -16,7 +16,6 @@ const MAX_CHARS = 20000;
 async function extractTextFromFile(file: File): Promise<string> {
   const lowerName = file.name.toLowerCase();
 
-  // PDF → send to server to extract text
   if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -34,18 +33,21 @@ async function extractTextFromFile(file: File): Promise<string> {
       body: JSON.stringify({ data: base64 }),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      throw new Error(data?.error || "Failed to extract text from PDF.");
+      throw new Error(
+        data?.error || data?.details || "Failed to extract text from PDF."
+      );
     }
 
-    const data = await res.json();
-    return String(data.text || "");
+    return String(data?.text || "");
   }
 
-  // Non-PDF → use plain text
+  // Non-PDF → plain text
   return await file.text();
 }
+
 
 
 export default function SummarizerPage() {
