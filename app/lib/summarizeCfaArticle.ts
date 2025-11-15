@@ -5,8 +5,8 @@ export type SummaryLevel = "base" | "more" | "max";
 
 export interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[]; // UI shows as "Highlights"
-  keyPoints: string[];    // UI shows as "Details"
+  keyTakeaways: string[]; // UI: Highlights
+  keyPoints: string[];    // UI: Details
   rawText: string;        // raw JSON from the model
 }
 
@@ -59,6 +59,11 @@ Requirements:
 
   const systemPrompt = `
 You summarize finance and research articles.
+
+Input may contain plain text, PDF text, or HTML (with tags, menus, navigation, etc.).
+Ignore navigation, menus, headers, footers, cookie banners, and boilerplate.
+Focus on the main article body (abstract, introduction, methods, results, conclusions).
+
 You MUST respond ONLY with valid JSON and nothing else.
 `.trim();
 
@@ -77,7 +82,7 @@ Definitions:
 - "keyTakeaways" = high-level highlights
 - "keyPoints"   = deeper details, supporting analysis, and nuance.
 
-Article:
+Article content (may include HTML or extra noise):
 """${articleText}"""
 `.trim();
 
