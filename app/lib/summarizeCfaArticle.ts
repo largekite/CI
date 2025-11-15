@@ -5,7 +5,7 @@ export interface ArticleSummary {
   title?: string;
   keyTakeaways: string[];
   keyPoints: string[];
-  rawText: string;
+  rawText: string; // original model output (for debugging / display)
 }
 
 const client = new OpenAI({
@@ -25,86 +25,61 @@ You are a CFA charterholder and experienced investment practitioner.
 Your job is to summarize a CFA Institute / Financial Analysts Journal research article
 for a busy portfolio manager who will NOT read the full paper.
 
-Requirements:
-- Focus on practice-oriented insight, not academic fluff.
-- Be concrete and non-promotional.
-- Avoid copying long sentences verbatim from the article.
-- Max 450 words in total.
+Return a JSON object ONLY, no extra text.
 `.trim();
 
   const userPrompt = `
-Summarize the following CFA research article.
+Summarize the following CFA research article excerpt for a practitioner.
 
-Output format (VERY IMPORTANT):
-1. A short inferred title (even if the original title isn't given).
-2. A "Key Takeaways" section with 3–7 bullets focusing on what practitioners should remember.
-3. A "Key Points" section with 5–10 bullets summarizing:
-   - core idea
-   - high-level methodology (one short phrase)
-   - main empirical findings
-   - practical implications / limitations
+Return STRICT JSON with this shape:
+
+{
+  "title": string,                       // short inferred title
+  "keyTakeaways": string[],              // 3–7 key practitioner takeaways
+  "keyPoints": string[]                  // 5–10 bullets: idea, method, findings, implications
+}
+
+Do NOT wrap it in markdown. Do NOT add explanations outside the JSON.
 
 Article:
 """${articleText}"""
 `.trim();
 
-  // ✅ Use chat completions (more widely supported)
+  // Ask the model to obey JSON format directly
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini", // or "gpt-4.1-mini" / "gpt-4o" if you have them
+    model: "gpt-4o-mini", // or "gpt-4o" / "gpt-4.1-mini" etc.
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     temperature: 0.2,
+    response_format: { type: "json_object" }, // <– force JSON
   });
 
-  const fullText =
-    completion.choices[0]?.message?.content?.toString().trim() ?? "";
-
-  if (!fullText) {
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
     throw new Error("OpenAI returned an empty response.");
   }
 
-  // --- Parse markdown into sections ---
-  const keyTakeaways: string[] = [];
-  const keyPoints: string[] = [];
+  let parsed: {
+    title?: string;
+    keyTakeaways?: string[];
+    keyPoints?: string[];
+  };
 
-  const lines = fullText.split("\n").map((l) => l.trim());
-  let section: "none" | "takeaways" | "points" = "none";
-
-  for (const line of lines) {
-    const lower = line.toLowerCase();
-
-    if (lower.startsWith("key takeaways")) {
-      section = "takeaways";
-      continue;
-    }
-    if (lower.startsWith("key points")) {
-      section = "points";
-      continue;
-    }
-
-    const bulletMatch = /^[-*•]\s+(.+)$/.exec(line);
-    if (bulletMatch) {
-      const text = bulletMatch[1].trim();
-      if (section === "takeaways") keyTakeaways.push(text);
-      else if (section === "points") keyPoints.push(text);
-    }
+  try {
+    parsed = JSON.parse(content);
+  } catch (e) {
+    // Fallback: if somehow parsing fails, at least surface raw text
+    throw new Error(
+      "Failed to parse model JSON. Raw content: " + content.toString()
+    );
   }
 
-  // Try to infer a title from the first non-empty line
-  const firstNonEmpty = lines.find((l) => l.length > 0) || "";
-  const maybeTitle =
-    firstNonEmpty.toLowerCase().includes("key takeaway") ||
-    firstNonEmpty.toLowerCase().includes("key points") ||
-    firstNonEmpty.toLowerCase().includes("summary")
-      ? undefined
-      : firstNonEmpty;
-
   return {
-    title: maybeTitle,
-    keyTakeaways,
-    keyPoints,
-    rawText: fullText,
+    title: parsed.title || undefined,
+    keyTakeaways: parsed.keyTakeaways ?? [],
+    keyPoints: parsed.keyPoints ?? [],
+    rawText: content.toString(),
   };
 }
