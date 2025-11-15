@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type ViewMode = 'list' | 'grid' | 'map';
 type Strategy = 'rental' | 'appreciation' | 'short_term_rental';
@@ -18,7 +18,7 @@ interface RawProperty {
   yearBuilt?: number;
   hoaMonthly?: number;
   imageUrl?: string;
-  images?: string[]; // optional; if not present, we'll fallback
+  images?: string[];
   externalUrl?: string;
   latitude?: number;
   longitude?: number;
@@ -40,7 +40,7 @@ interface ScoredProperty {
 }
 
 interface SearchFormState {
-  zips: string; // comma-separated ZIPs
+  zips: string;
   minPrice: string;
   maxPrice: string;
   minBeds: string;
@@ -65,8 +65,12 @@ const defaultForm: SearchFormState = {
 
 type SortKey = 'score' | 'capRate' | 'cashOnCash' | 'priceAsc' | 'priceDesc';
 
+// -----------------------------------------------------------------------------
+// MAIN PAGE
+// -----------------------------------------------------------------------------
+
 export default function InvestmentPropertyFinderPage() {
-  const [form, setForm] = useState<SearchFormState>(defaultForm);
+  const [form, setForm] = useState(defaultForm);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortKey, setSortKey] = useState<SortKey>('score');
   const [loading, setLoading] = useState(false);
@@ -79,7 +83,6 @@ export default function InvestmentPropertyFinderPage() {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompareModal, setShowCompareModal] = useState(false);
 
-  // Global assumptions (could be per-user later)
   const [assumptions, setAssumptions] = useState({
     taxRate: 0.012,
     insuranceRate: 0.004,
@@ -90,9 +93,8 @@ export default function InvestmentPropertyFinderPage() {
     downPayment: 0.25,
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  // Handle inputs
+  const handleChange = (e: any) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -106,7 +108,8 @@ export default function InvestmentPropertyFinderPage() {
     });
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
+  // SEARCH
+  const handleSearch = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -117,7 +120,7 @@ export default function InvestmentPropertyFinderPage() {
       .map((z) => z.trim())
       .filter((z) => z.length > 0);
 
-    if (zipList.length === 0) {
+    if (!zipList.length) {
       setError('Please enter at least one ZIP code');
       setLoading(false);
       return;
@@ -126,7 +129,6 @@ export default function InvestmentPropertyFinderPage() {
     try {
       const accumulated: ScoredProperty[] = [];
 
-      // simple sequential calls for now
       for (const zip of zipList) {
         const payload = {
           zip,
@@ -143,35 +145,32 @@ export default function InvestmentPropertyFinderPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+
         const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error || 'Error searching properties');
-        }
+        if (!res.ok) throw new Error(json.error || 'Search failed.');
         accumulated.push(...json.results);
       }
 
       setResults(accumulated);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Server error');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // Sorting & Filtering
   const filteredSorted = useMemo(() => {
     let arr = [...results];
 
-    // client-side extra filters
     if (form.minCapRate) {
       const minCap = Number(form.minCapRate) / 100;
       arr = arr.filter((r) => r.metrics.capRate >= minCap);
     }
+
     if (form.maxHoa) {
-      const maxHoaNum = Number(form.maxHoa);
-      arr = arr.filter(
-        (r) => (r.property.hoaMonthly || 0) <= maxHoaNum
-      );
+      const maxHoa = Number(form.maxHoa);
+      arr = arr.filter((r) => (r.property.hoaMonthly || 0) <= maxHoa);
     }
 
     arr.sort((a, b) => {
@@ -202,49 +201,39 @@ export default function InvestmentPropertyFinderPage() {
     setForm(s);
   };
 
+  const compareList = filteredSorted.filter((r) => compareIds.has(r.property.id));
+
   const anyCompare = compareIds.size > 0;
-  const compareList = filteredSorted.filter((r) =>
-    compareIds.has(r.property.id)
-  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sticky header with condensed search summary */}
-      <header className="sticky top-0 z-30 bg-slate-900 text-white shadow-md">
+    <div className="min-h-screen bg-slate-50 font-sans">
+      {/* -------- HEADER -------- */}
+      <header className="sticky top-0 z-30 bg-[#071629] text-slate-50 shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-semibold">Investment Property Finder</h1>
-            <p className="text-xs text-slate-300">
-              LargeKite Capital · Educational investment analytics
-            </p>
+            <h1 className="text-lg font-semibold tracking-tight">LargeKite Capital · Investment Finder</h1>
+            <p className="text-[11px] text-slate-300">Data-driven real estate screening.</p>
           </div>
-          <div className="hidden md:block text-xs text-right">
-            {form.zips && (
-              <div>
-                ZIPs: <span className="font-semibold">{form.zips}</span>
-              </div>
-            )}
+
+          <div className="hidden md:block text-[11px] text-right text-slate-200">
+            {form.zips && <div>ZIPs: <span className="font-semibold text-[#14b8a6]">{form.zips}</span></div>}
             {(form.minPrice || form.maxPrice) && (
               <div>
-                Price: {form.minPrice && `$${Number(form.minPrice).toLocaleString()}+`}
+                Price:
+                {form.minPrice && ` $${Number(form.minPrice).toLocaleString()}+`}
                 {form.maxPrice && ` – $${Number(form.maxPrice).toLocaleString()}`}
               </div>
             )}
             <div>
-              Horizon: <span className="font-semibold">{form.timeHorizonYears} yrs</span> ·
-              Strategy:{' '}
-              <span className="capitalize font-semibold">
-                {form.strategy.replace(/_/g, ' ')}
-              </span>
+              {form.timeHorizonYears} yrs · {form.strategy.replace(/_/g, ' ')}
             </div>
           </div>
 
-          {/* View + Compare actions */}
           <div className="flex items-center gap-2">
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
             {anyCompare && (
               <button
-                className="hidden sm:inline-flex px-3 py-1.5 text-xs rounded-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                className="hidden sm:inline-flex px-3 py-1.5 text-[11px] rounded-full bg-[#14b8a6] hover:bg-[#0d9488] text-white"
                 onClick={() => setShowCompareModal(true)}
               >
                 Compare ({compareIds.size})
@@ -254,186 +243,130 @@ export default function InvestmentPropertyFinderPage() {
         </div>
       </header>
 
+      {/* -------- MAIN -------- */}
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Search & filters */}
-        <section className="bg-white rounded-xl shadow-sm p-4 md:p-5 space-y-4">
+
+        {/* SEARCH PANEL */}
+        <section className="bg-white rounded-xl shadow-sm p-4 md:p-5 space-y-4 border border-slate-100">
           <form onSubmit={handleSearch} className="grid gap-4 md:grid-cols-4">
+            
+            {/* ZIP */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                ZIP Codes (comma separated)
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                ZIP Codes
               </label>
               <input
                 name="zips"
                 value={form.zips}
                 onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                placeholder="e.g. 63011, 63021, 63141"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Min Price
-              </label>
-              <input
-                name="minPrice"
-                value={form.minPrice}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="200000"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Max Price
-              </label>
-              <input
-                name="maxPrice"
-                value={form.maxPrice}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="450000"
+                placeholder="63011, 63021, 63141"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm
+                           focus:ring-2 focus:ring-[#14b8a6]/70"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Min Beds
-              </label>
-              <input
-                name="minBeds"
-                value={form.minBeds}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Min Baths
-              </label>
-              <input
-                name="minBaths"
-                value={form.minBaths}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
+            {/* PRICE */}
+            <InputField name="minPrice" label="Min Price" placeholder="200000" form={form} handleChange={handleChange} />
+            <InputField name="maxPrice" label="Max Price" placeholder="450000" form={form} handleChange={handleChange} />
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Strategy
-              </label>
-              <select
-                name="strategy"
-                value={form.strategy}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="rental">Buy & Hold Rental</option>
-                <option value="appreciation">Appreciation Focused</option>
-                <option value="short_term_rental">Short-Term Rental</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Time Horizon (years)
-              </label>
-              <select
-                name="timeHorizonYears"
-                value={form.timeHorizonYears}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="3">3</option>
-                <option value="5">5</option>
-                <option value="10">10</option>
-              </select>
-            </div>
+            {/* BEDS/BATHS */}
+            <InputField name="minBeds" label="Min Beds" form={form} handleChange={handleChange} />
+            <InputField name="minBaths" label="Min Baths" form={form} handleChange={handleChange} />
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Min Cap Rate (%)
-              </label>
-              <input
-                name="minCapRate"
-                value={form.minCapRate}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="5"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Max HOA ($/mo)
-              </label>
-              <input
-                name="maxHoa"
-                value={form.maxHoa}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                placeholder="250"
-              />
-            </div>
+            {/* STRATEGY */}
+            <SelectField
+              name="strategy"
+              label="Strategy"
+              form={form}
+              handleChange={handleChange}
+              options={[
+                { value: 'rental', label: 'Buy & Hold Rental' },
+                { value: 'appreciation', label: 'Appreciation Focused' },
+                { value: 'short_term_rental', label: 'Short-Term Rental' },
+              ]}
+            />
 
+            {/* HORIZON */}
+            <SelectField
+              name="timeHorizonYears"
+              label="Horizon (yrs)"
+              form={form}
+              handleChange={handleChange}
+              options={[
+                { value: '3', label: '3' },
+                { value: '5', label: '5' },
+                { value: '10', label: '10' },
+              ]}
+            />
+
+            {/* CAP / HOA FILTERS */}
+            <InputField name="minCapRate" label="Min Cap Rate (%)" placeholder="5" form={form} handleChange={handleChange} />
+            <InputField name="maxHoa" label="Max HOA ($/mo)" placeholder="250" form={form} handleChange={handleChange} />
+
+            {/* ACTION BUTTONS */}
             <div className="flex items-end gap-2 md:col-span-2">
               <button
                 type="submit"
-                className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-sm font-semibold text-white disabled:opacity-60"
+                className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg 
+                           bg-[#14b8a6] hover:bg-[#0d9488] text-sm font-semibold text-white
+                           disabled:opacity-60"
                 disabled={loading}
               >
                 {loading ? 'Searching…' : 'Find Properties'}
               </button>
+
               <button
                 type="button"
-                onClick={handleSaveSearch}
-                className="hidden md:inline-flex px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setSavedSearches([...savedSearches, form])}
+                className="hidden md:inline-flex px-3 py-2 rounded-lg border border-slate-200 text-[11px]
+                           font-medium text-slate-700 hover:bg-slate-50"
               >
                 Save search
               </button>
+
               <button
                 type="button"
                 onClick={() => setShowAssumptions(true)}
-                className="ml-auto px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="ml-auto px-3 py-2 rounded-lg border border-slate-200 text-[11px]
+                           font-medium text-slate-700 hover:bg-slate-50"
               >
                 Edit assumptions
               </button>
             </div>
           </form>
 
+          {/* SAVED SEARCHES */}
           {savedSearches.length > 0 && (
             <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-semibold text-slate-600 mb-2">
-                Saved searches
-              </p>
+              <p className="text-[11px] font-semibold text-slate-600 mb-2 uppercase">Saved searches</p>
               <div className="flex flex-wrap gap-2">
                 {savedSearches.map((s, idx) => (
                   <button
                     key={idx}
-                    className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs text-slate-700"
                     onClick={() => loadSavedSearch(s)}
+                    className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 
+                               text-[11px] text-slate-700"
                   >
-                    {s.zips || 'ZIPs'} · {s.timeHorizonYears}y ·{' '}
-                    {s.strategy.replace(/_/g, ' ')}
+                    {s.zips} · {s.timeHorizonYears}y · {s.strategy.replace(/_/g, ' ')}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <p className="mt-2 text-[11px] text-slate-400">
-            This tool provides educational estimates only and is not personalized financial
-            advice. Actual returns may differ. Please verify all assumptions and consult
-            a qualified advisor before making investment decisions.
+          <p className="mt-2 text-[10px] text-slate-400 leading-snug">
+            This tool is for educational use only. Estimates are not financial advice.
           </p>
         </section>
 
-        {/* Sort + summary + compare (secondary bar) */}
+        {/* SORT BAR */}
         <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <SortPills sortKey={sortKey} setSortKey={setSortKey} />
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <span>{filteredSorted.length} properties</span>
+          <div className="text-[11px] text-slate-600">
+            {filteredSorted.length} properties
             {anyCompare && (
               <button
-                className="inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700"
+                className="ml-2 inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700"
                 onClick={() => setShowCompareModal(true)}
               >
                 Compare {compareIds.size}
@@ -442,42 +375,37 @@ export default function InvestmentPropertyFinderPage() {
           </div>
         </section>
 
-        {/* Error */}
+        {/* ERROR */}
         {error && (
           <div className="bg-red-50 border border-red-100 text-sm text-red-700 px-3 py-2 rounded-lg">
             {error}
           </div>
         )}
 
-        {/* Results */}
+        {/* RESULTS */}
         <section>
           {loading && (
             <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-32 bg-slate-100 animate-pulse rounded-xl"
-                />
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-xl" />
               ))}
             </div>
           )}
 
           {!loading && filteredSorted.length === 0 && !error && (
             <p className="text-sm text-slate-500">
-              No results yet. Enter ZIPs and filters above, then click{' '}
-              <span className="font-semibold">Find Properties</span>.
+              No results yet. Enter ZIPs and click{' '}
+              <span className="font-semibold text-[#14b8a6]">Find Properties</span>.
             </p>
           )}
 
           {!loading && filteredSorted.length > 0 && (
             <>
+              {/* LIST / GRID */}
               {viewMode !== 'map' && (
-                <div
-                  className={
-                    viewMode === 'grid'
-                      ? 'grid gap-4 md:grid-cols-2'
-                      : 'space-y-4'
-                  }
+                <div className={viewMode === 'grid'
+                  ? 'grid gap-4 md:grid-cols-2'
+                  : 'space-y-4'}
                 >
                   {filteredSorted.map((item) => (
                     <PropertyCard
@@ -492,13 +420,15 @@ export default function InvestmentPropertyFinderPage() {
                 </div>
               )}
 
+              {/* MAP (placeholder) */}
               {viewMode === 'map' && (
                 <div className="grid md:grid-cols-[2fr,3fr] gap-4">
-                  <div className="h-[360px] md:h-[480px] bg-slate-200 rounded-xl flex items-center justify-center text-sm text-slate-600">
-                    {/* Placeholder for real map / heatmap integration */}
-                    Map / Heatmap view coming soon
+                  <div className="h-[400px] bg-slate-200 rounded-xl 
+                                  flex items-center justify-center text-sm text-slate-600">
+                    Map / Heatmap coming soon
                   </div>
-                  <div className="space-y-3 max-h-[480px] overflow-y-auto pr-2">
+
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                     {filteredSorted.map((item) => (
                       <PropertyCard
                         key={item.property.id}
@@ -518,7 +448,7 @@ export default function InvestmentPropertyFinderPage() {
         </section>
       </main>
 
-      {/* Detail drawer */}
+      {/* MODALS */}
       {selectedProperty && (
         <PropertyDetailDrawer
           item={selectedProperty}
@@ -529,7 +459,6 @@ export default function InvestmentPropertyFinderPage() {
         />
       )}
 
-      {/* Assumption editor */}
       {showAssumptions && (
         <AssumptionModal
           assumptions={assumptions}
@@ -538,7 +467,6 @@ export default function InvestmentPropertyFinderPage() {
         />
       )}
 
-      {/* Compare modal */}
       {showCompareModal && compareList.length > 0 && (
         <CompareModal
           items={compareList}
@@ -549,52 +477,88 @@ export default function InvestmentPropertyFinderPage() {
   );
 }
 
-/* ---------- UI subcomponents ---------- */
+// -----------------------------------------------------------------------------
+// Reusable Input + Select field components for Search Panel
+// -----------------------------------------------------------------------------
 
-function ViewToggle({
-  viewMode,
-  setViewMode,
-}: {
-  viewMode: ViewMode;
-  setViewMode: (v: ViewMode) => void;
-}) {
-  const btn = (mode: ViewMode, label: string) => (
-    <button
-      key={mode}
-      onClick={() => setViewMode(mode)}
-      className={[
-        'px-2.5 py-1 rounded-full text-xs font-medium border',
-        viewMode === mode
-          ? 'bg-white text-slate-900 border-white'
-          : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700',
-      ].join(' ')}
-    >
-      {label}
-    </button>
-  );
+function InputField({ name, label, placeholder, form, handleChange }: any) {
   return (
-    <div className="flex gap-1">
-      {btn('list', 'List')}
-      {btn('grid', 'Grid')}
-      {btn('map', 'Map')}
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+        {label}
+      </label>
+      <input
+        name={name}
+        value={form[name as keyof typeof form]}
+        onChange={handleChange}
+        placeholder={placeholder}
+        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+      />
     </div>
   );
 }
 
-function SortPills({
-  sortKey,
-  setSortKey,
-}: {
-  sortKey: SortKey;
-  setSortKey: (k: SortKey) => void;
-}) {
-  const options: { key: SortKey; label: string }[] = [
-    { key: 'score', label: 'Top score' },
-    { key: 'capRate', label: 'Highest cap rate' },
-    { key: 'cashOnCash', label: 'Highest cash-on-cash' },
-    { key: 'priceAsc', label: 'Lowest price' },
-    { key: 'priceDesc', label: 'Highest price' },
+function SelectField({ name, label, options, form, handleChange }: any) {
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+        {label}
+      </label>
+      <select
+        name={name}
+        value={form[name as keyof typeof form]}
+        onChange={handleChange}
+        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+      >
+        {options.map((o: any) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+// -----------------------------------------------------------------------------
+// VIEW TOGGLE
+// -----------------------------------------------------------------------------
+
+function ViewToggle({ viewMode, setViewMode }: any) {
+  const Button = (mode: ViewMode, label: string) => (
+    <button
+      key={mode}
+      onClick={() => setViewMode(mode)}
+      className={[
+        "px-2.5 py-1 rounded-full text-[11px] font-medium border",
+        viewMode === mode
+          ? "bg-white text-[#071629] border-white shadow-sm"
+          : "bg-[#0b1729] text-slate-200 border-slate-700 hover:bg-slate-800",
+      ].join(" ")}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex gap-1">
+      {Button("list", "List")}
+      {Button("grid", "Grid")}
+      {Button("map", "Map")}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// SORT PILLS
+// -----------------------------------------------------------------------------
+
+function SortPills({ sortKey, setSortKey }: any) {
+  const options = [
+    { key: "score", label: "Top score" },
+    { key: "capRate", label: "Highest cap rate" },
+    { key: "cashOnCash", label: "Highest cash-on-cash" },
+    { key: "priceAsc", label: "Lowest price" },
+    { key: "priceDesc", label: "Highest price" },
   ];
+
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => (
@@ -602,11 +566,11 @@ function SortPills({
           key={o.key}
           onClick={() => setSortKey(o.key)}
           className={[
-            'px-3 py-1.5 rounded-full text-xs border',
+            "px-3 py-1.5 rounded-full text-[11px] border",
             sortKey === o.key
-              ? 'bg-slate-900 text-white border-slate-900'
-              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50',
-          ].join(' ')}
+              ? "bg-[#071629] text-white border-[#071629]"
+              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+          ].join(" ")}
         >
           {o.label}
         </button>
@@ -615,164 +579,131 @@ function SortPills({
   );
 }
 
-function PropertyCard({
-  data,
-  viewMode,
-  compact,
-  onSelect,
-  onToggleCompare,
-  isCompared,
-}: {
-  data: ScoredProperty;
-  viewMode: ViewMode;
-  compact?: boolean;
-  onSelect: () => void;
-  onToggleCompare: () => void;
-  isCompared: boolean;
-}) {
+// -----------------------------------------------------------------------------
+// PROPERTY CARD
+// -----------------------------------------------------------------------------
+
+function PropertyCard({ data, onSelect, compact, onToggleCompare, isCompared }: any) {
   const { property, metrics, score } = data;
 
-  const images =
-    property.images && property.images.length > 0
-      ? property.images
-      : property.imageUrl
-      ? [property.imageUrl]
-      : [];
+  const images = property.images?.length
+    ? property.images
+    : property.imageUrl
+    ? [property.imageUrl]
+    : [];
 
   const scoreColor =
-    score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-400' : 'bg-rose-500';
+    score >= 80
+      ? "bg-emerald-500"
+      : score >= 60
+      ? "bg-amber-400"
+      : "bg-rose-500";
 
   const AIInsight = (() => {
     const { capRate, cashOnCash } = metrics;
-    if (capRate >= 0.08) {
-      return 'Strong cap rate relative to typical single-family rentals; worth deeper due diligence.';
-    }
-    if (cashOnCash >= 0.10) {
-      return 'Attractive cash-on-cash projection given current assumptions.';
-    }
-    return 'Solid but not standout—may compete with alternatives depending on risk tolerance.';
+    if (capRate >= 0.08) return "Strong cap rate for SFH market.";
+    if (cashOnCash >= 0.10) return "Attractive cash-on-cash projection.";
+    return "Decent fundamentals; depends on investor objectives.";
   })();
 
   return (
     <article
-      className={[
-        'group bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md transition-shadow flex flex-col',
-        compact ? 'md:flex-row' : '',
-      ].join(' ')}
       onClick={onSelect}
+      className={[
+        "group bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer",
+        "hover:shadow-md transition-shadow flex flex-col",
+        compact ? "md:flex-row" : "",
+      ].join(" ")}
     >
-      {/* Image / carousel area */}
-      {images.length > 0 && (
-        <div
-          className={[
-            'relative',
-            compact ? 'md:w-40 md:flex-shrink-0 h-32' : 'h-40',
-          ].join(' ')}
-        >
-          <div className="w-full h-full overflow-x-auto flex gap-1 snap-x snap-mandatory">
-            {images.map((src, idx) => (
-              <img
-                key={idx}
-                src={src}
-                alt={property.address}
-                className="w-full h-full object-cover flex-shrink-0 snap-center"
-              />
-            ))}
-          </div>
-          <div className="absolute top-2 left-2 flex items-center gap-1">
-            <div
-              className={`rounded-full ${scoreColor} text-white text-[10px] px-2 py-1 font-semibold shadow-sm`}
-            >
-              Score {score}
-            </div>
-          </div>
-          {property.hoaMonthly != null && (
-            <div className="absolute bottom-2 left-2 text-[10px] px-2 py-1 rounded-full bg-black/60 text-white">
-              HOA ${Math.round(property.hoaMonthly).toLocaleString()}/mo
-            </div>
-          )}
-          <button
-            type="button"
-            className="absolute top-2 right-2 text-[11px] bg-white/90 rounded-full px-2 py-1 shadow-sm text-slate-700 hover:bg-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCompare();
-            }}
-          >
-            {isCompared ? '✓ Compared' : 'Compare'}
-          </button>
+      {/* IMAGES */}
+      <div className={["relative", compact ? "md:w-40 h-32" : "h-40"].join(" ")}>
+        <div className="w-full h-full overflow-x-auto flex gap-1 snap-x snap-mandatory scroll-smooth">
+          {images.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt="House"
+              className="w-full h-full object-cover flex-shrink-0 snap-center"
+            />
+          ))}
         </div>
-      )}
 
-      {/* Body */}
-      <div className="flex-1 p-3 md:p-4 flex flex-col gap-2">
-        <div className="flex justify-between gap-2">
+        {/* SCORE */}
+        <div className="absolute top-2 left-2">
+          <div
+            className={`${scoreColor} text-white text-[10px] px-2 py-1 rounded-full font-semibold`}
+          >
+            Score {score}
+          </div>
+        </div>
+
+        {/* HOA */}
+        {property.hoaMonthly && (
+          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-full">
+            HOA ${property.hoaMonthly}/mo
+          </div>
+        )}
+
+        {/* COMPARE */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCompare();
+          }}
+          className="absolute top-2 right-2 bg-white/90 px-2 py-1 text-[11px] rounded-full shadow-sm text-slate-700"
+        >
+          {isCompared ? "✓ Compared" : "Compare"}
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div className="p-3 md:p-4 flex-1 flex flex-col gap-2">
+        <div className="flex justify-between">
           <div>
-            <h2 className="text-sm md:text-base font-semibold text-slate-900">
-              {property.address}
-            </h2>
+            <h2 className="text-sm md:text-base font-semibold">{property.address}</h2>
             <p className="text-xs text-slate-500">
               {property.city}, {property.state} {property.zip}
             </p>
-            {property.yearBuilt && (
-              <p className="text-[11px] text-slate-400">
-                Built {property.yearBuilt}
-              </p>
-            )}
           </div>
+
           <div className="text-right">
-            <div className="text-sm md:text-lg font-bold text-slate-900">
+            <div className="text-sm md:text-lg font-bold text-[#071629]">
               ${property.listPrice.toLocaleString()}
             </div>
-            <div className="text-[11px] text-slate-500">
-              {property.beds ?? '?'} bd · {property.baths ?? '?'} ba ·{' '}
-              {property.sqft ? `${property.sqft.toLocaleString()} sqft` : '? sqft'}
-            </div>
+            <p className="text-[11px] text-slate-500">
+              {property.beds ?? "?"} bd · {property.baths ?? "?"} ba
+            </p>
           </div>
         </div>
 
-        {/* Metrics bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] md:text-xs">
+        {/* METRICS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+          <MetricPill label="Cap Rate" value={`${(metrics.capRate * 100).toFixed(1)}%`} />
+          <MetricPill label="CoC" value={`${(metrics.cashOnCash * 100).toFixed(1)}%`} />
+          <MetricPill label="Rent" value={`$${metrics.estimatedRent.toFixed(0)}/mo`} />
           <MetricPill
-            label="Cap rate"
-            value={`${(metrics.capRate * 100).toFixed(1)}%`}
-          />
-          <MetricPill
-            label="Cash-on-cash"
-            value={`${(metrics.cashOnCash * 100).toFixed(1)}%`}
-          />
-          <MetricPill
-            label="Est. rent"
-            value={`$${Math.round(metrics.estimatedRent).toLocaleString()}/mo`}
-          />
-          <MetricPill
-            label="Proj. value"
-            value={`$${Math.round(
-              metrics.projectedValueYearN
-            ).toLocaleString()}`}
+            label="Proj. Value"
+            value={`$${metrics.projectedValueYearN.toLocaleString()}`}
           />
         </div>
 
-        {/* AI-ish insight */}
         <p className="text-[11px] text-slate-500 line-clamp-2">
-          <span className="font-semibold text-slate-700">AI Insight: </span>
-          {AIInsight}
+          <span className="font-semibold text-slate-700">AI Insight:</span> {AIInsight}
         </p>
 
-        {/* Footer actions */}
-        <div className="mt-1 flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 group-hover:text-sky-600">
-            View details & projections →
+        <div className="flex justify-between text-[11px] mt-auto">
+          <span className="text-slate-400 group-hover:text-[#0ea5e9]">
+            View details →
           </span>
+
           {property.externalUrl && (
             <a
               href={property.externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sky-600 hover:underline"
               onClick={(e) => e.stopPropagation()}
+              target="_blank"
+              className="text-[#0ea5e9] hover:underline"
             >
-              View listing
+              Listing
             </a>
           )}
         </div>
@@ -781,441 +712,290 @@ function PropertyCard({
   );
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
+// -----------------------------------------------------------------------------
+// METRIC PILL
+// -----------------------------------------------------------------------------
+
+function MetricPill({ label, value }: any) {
   return (
-    <div className="rounded-lg bg-slate-50 px-2 py-1.5 flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-slate-400">
-        {label}
-      </span>
-      <span className="text-xs font-semibold text-slate-800">{value}</span>
+    <div className="bg-slate-50 border border-slate-100 rounded-lg px-2 py-1.5">
+      <div className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</div>
+      <div className="text-xs font-semibold text-[#071629]">{value}</div>
     </div>
   );
 }
+// -----------------------------------------------------------------------------
+// DETAIL DRAWER
+// -----------------------------------------------------------------------------
 
-/* -------- Detail drawer -------- */
-
-function PropertyDetailDrawer({
-  item,
-  horizon,
-  strategy,
-  assumptions,
-  onClose,
-}: {
-  item: ScoredProperty;
-  horizon: number;
-  strategy: Strategy;
-  assumptions: {
-    taxRate: number;
-    insuranceRate: number;
-    maintenanceRate: number;
-    managementRate: number;
-    vacancyRate: number;
-    loanRate: number;
-    downPayment: number;
-  };
-  onClose: () => void;
-}) {
+function PropertyDetailDrawer({ item, horizon, strategy, assumptions, onClose }: any) {
   const { property, metrics, score } = item;
 
-  // Simple projection series for chart
-  const projectionPoints = useMemo(() => {
-    const years = Array.from({ length: horizon + 1 }, (_, i) => i);
-    const annualGrowth = Math.pow(
-      metrics.projectedValueYearN / property.listPrice,
-      1 / (horizon || 1)
-    );
-    return years.map((year) => ({
-      year,
-      value: Math.round(property.listPrice * Math.pow(annualGrowth, year)),
-    }));
-  }, [horizon, metrics.projectedValueYearN, property.listPrice]);
+  // Simple projected value points
+  const projection = [];
+  const start = property.listPrice;
+  const end = metrics.projectedValueYearN;
+  const growth = Math.pow(end / start, 1 / horizon);
 
-  const maxVal =
-    projectionPoints.length > 0
-      ? Math.max(...projectionPoints.map((p) => p.value))
-      : property.listPrice;
+  for (let y = 0; y <= horizon; y++) {
+    projection.push({
+      year: y,
+      value: Math.round(start * Math.pow(growth, y)),
+    });
+  }
+
+  const maxVal = Math.max(...projection.map((p) => p.value));
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
       <div className="relative z-50 w-full max-w-xl h-full bg-white shadow-xl flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        
+        {/* HEADER */}
+        <div className="px-4 py-3 border-b border-slate-100 flex justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              {property.address}
-            </h2>
+            <h2 className="text-sm font-semibold">{property.address}</h2>
             <p className="text-xs text-slate-500">
               {property.city}, {property.state} {property.zip}
             </p>
           </div>
-          <button
-            className="text-xs text-slate-500 hover:text-slate-800"
-            onClick={onClose}
-          >
-            Close ✕
+
+          <button onClick={onClose} className="text-xs text-slate-500">
+            ✕ Close
           </button>
         </div>
 
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Big image */}
+          
+          {/* IMAGE */}
           {property.imageUrl && (
             <img
               src={property.imageUrl}
-              alt={property.address}
               className="w-full h-48 object-cover rounded-lg"
             />
           )}
 
-          {/* Headline stats */}
-          <div className="flex justify-between items-start gap-2">
+          {/* PRICE & METRICS */}
+          <div className="flex justify-between">
             <div>
-              <div className="text-lg font-bold text-slate-900">
+              <div className="text-xl font-bold text-[#071629]">
                 ${property.listPrice.toLocaleString()}
               </div>
-              <div className="text-xs text-slate-500">
-                {property.beds ?? '?'} bd · {property.baths ?? '?'} ba ·{' '}
-                {property.sqft
-                  ? `${property.sqft.toLocaleString()} sqft`
-                  : '? sqft'}
-              </div>
+              <p className="text-[11px] text-slate-500">
+                {property.beds} bd · {property.baths} ba · {property.sqft} sqft
+              </p>
             </div>
+
             <div className="text-right">
-              <div className="inline-flex items-center justify-center rounded-full bg-slate-900 text-white text-[11px] px-3 py-1 font-semibold">
-                Investment score {score}/100
-              </div>
-              <div className="mt-1 text-[11px] text-slate-500">
-                Strategy: {strategy.replace(/_/g, ' ')} · {horizon} years
-              </div>
+              <span className="inline-block bg-[#071629] text-white text-[11px] px-3 py-1 rounded-full">
+                Score {score}/100
+              </span>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {strategy.replace(/_/g, " ")} · {horizon} yrs
+              </p>
             </div>
           </div>
 
-          {/* ROI breakdown */}
-          <section className="bg-slate-50 rounded-lg p-3 space-y-2 text-xs">
-            <h3 className="text-xs font-semibold text-slate-700">
-              Cash flow & return snapshot
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <MetricPill label="Est. rent" value={`$${Math.round(metrics.estimatedRent).toLocaleString()}/mo`} />
-              <MetricPill
-                label="Annual NOI"
-                value={`$${Math.round(metrics.annualNOI).toLocaleString()}`}
-              />
-              <MetricPill
-                label="Cap rate"
-                value={`${(metrics.capRate * 100).toFixed(1)}%`}
-              />
-              <MetricPill
-                label="Cash-on-cash"
-                value={`${(metrics.cashOnCash * 100).toFixed(1)}%`}
-              />
-            </div>
-            <p className="text-[11px] text-slate-500">
-              Includes estimated taxes ({(assumptions.taxRate * 100).toFixed(
-                1
-              )}
-              %), insurance ({(assumptions.insuranceRate * 100).toFixed(1)}
-              %), maintenance ({(assumptions.maintenanceRate * 100).toFixed(0)}%
-              of rent), management (
-              {(assumptions.managementRate * 100).toFixed(0)}% of rent), and
-              HOA where applicable.
-            </p>
-          </section>
+          {/* ROI SUMMARY */}
+          <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2 text-xs">
+            <h3 className="font-semibold">Cash Flow Snapshot</h3>
 
-          {/* Projection chart */}
-          <section className="bg-white border border-slate-100 rounded-lg p-3 text-xs">
-            <h3 className="text-xs font-semibold text-slate-700 mb-2">
-              10-year value projection (simple model)
-            </h3>
-            <div className="w-full h-40 bg-slate-50 rounded-md flex items-center justify-center">
-              {/* Simple SVG line chart */}
-              <svg viewBox="0 0 100 40" className="w-full h-full">
-                {projectionPoints.map((pt, idx) => {
-                  if (idx === 0) return null;
-                  const prev = projectionPoints[idx - 1];
-                  const x1 = (prev.year / horizon) * 90 + 5;
-                  const x2 = (pt.year / horizon) * 90 + 5;
-                  const y1 =
-                    35 -
-                    ((prev.value - property.listPrice) /
-                      (maxVal - property.listPrice || 1)) *
-                      30;
-                  const y2 =
-                    35 -
-                    ((pt.value - property.listPrice) /
-                      (maxVal - property.listPrice || 1)) *
-                      30;
-                  return (
-                    <line
-                      key={idx}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="#0f766e"
-                      strokeWidth="0.6"
-                    />
-                  );
-                })}
-              </svg>
+            <div className="grid grid-cols-2 gap-2">
+              <MetricPill label="Rent" value={`$${metrics.estimatedRent.toFixed(0)}/mo`} />
+              <MetricPill label="NOI" value={`$${metrics.annualNOI.toLocaleString()}`} />
+              <MetricPill label="Cap Rate" value={`${(metrics.capRate * 100).toFixed(1)}%`} />
+              <MetricPill label="CoC" value={`${(metrics.cashOnCash * 100).toFixed(1)}%`} />
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-              <span>Year 0: ${property.listPrice.toLocaleString()}</span>
+
+            <p className="text-[10px] text-slate-500">
+              Includes tax rate {(assumptions.taxRate * 100).toFixed(1)}%, 
+              insurance {(assumptions.insuranceRate * 100).toFixed(1)}%, 
+              maintenance {assumptions.maintenanceRate * 100}%, 
+              management {assumptions.managementRate * 100}%.
+            </p>
+          </div>
+
+          {/* VALUE PROJECTION CHART */}
+          <div className="bg-white border border-slate-100 rounded-lg p-3">
+            <h3 className="text-xs font-semibold">Value Projection</h3>
+            <svg viewBox="0 0 100 40" className="w-full h-32 mt-2">
+              {projection.map((p, i) => {
+                if (i === 0) return null;
+                const prev = projection[i - 1];
+
+                const x1 = ((prev.year / horizon) * 90) + 5;
+                const x2 = ((p.year / horizon) * 90) + 5;
+
+                const y1 = 35 - ((prev.value - start) / (maxVal - start)) * 30;
+                const y2 = 35 - ((p.value - start) / (maxVal - start)) * 30;
+
+                return (
+                  <line
+                    key={i}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="#14b8a6"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+            </svg>
+
+            <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>${start.toLocaleString()}</span>
               <span>
-                Year {horizon}:{' '}
-                ${Math.round(metrics.projectedValueYearN).toLocaleString()}
+                Year {horizon}: ${metrics.projectedValueYearN.toLocaleString()}
               </span>
             </div>
-          </section>
+          </div>
 
-          {/* Map preview placeholder */}
-          <section className="bg-slate-50 rounded-lg p-3 text-xs">
-            <h3 className="text-xs font-semibold text-slate-700 mb-1">
-              Neighborhood snapshot
-            </h3>
-            <div className="h-32 bg-slate-200 rounded-md flex items-center justify-center text-[11px] text-slate-600">
-              Map / heatmap integration placeholder
+          {/* MAP PLACEHOLDER */}
+          <div className="bg-slate-50 border border-slate-100 rounded-lg p-3">
+            <h3 className="text-xs font-semibold">Neighborhood</h3>
+            <div className="h-32 bg-slate-200 rounded-lg flex items-center justify-center text-[11px]">
+              Map / Heatmap coming soon
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Future enhancement: overlay heatmap of average investment score and rent
-              performance for surrounding blocks.
-            </p>
-          </section>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* -------- Assumption modal -------- */
+// -----------------------------------------------------------------------------
+// ASSUMPTION MODAL
+// -----------------------------------------------------------------------------
 
-function AssumptionModal({
-  assumptions,
-  onChange,
-  onClose,
-}: {
-  assumptions: {
-    taxRate: number;
-    insuranceRate: number;
-    maintenanceRate: number;
-    managementRate: number;
-    vacancyRate: number;
-    loanRate: number;
-    downPayment: number;
-  };
-  onChange: (a: typeof assumptions) => void;
-  onClose: () => void;
-}) {
-  const handleField = (field: keyof typeof assumptions, value: string) => {
-    const num = Number(value) / (field.includes('Rate') || field === 'loanRate'
-      ? 100
-      : 1);
-    onChange({ ...assumptions, [field]: isNaN(num) ? assumptions[field] : num });
+function AssumptionModal({ assumptions, onChange, onClose }: any) {
+  const setField = (key: keyof typeof assumptions, val: string) => {
+    const num = Number(val) / 100;
+    onChange({ ...assumptions, [key]: isNaN(num) ? assumptions[key] : num });
   };
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
-      <div className="relative z-50 w-full max-w-md bg-white rounded-xl shadow-lg p-4 space-y-3 text-xs">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Edit investment assumptions
-          </h3>
-          <button
-            className="text-[11px] text-slate-500 hover:text-slate-800"
-            onClick={onClose}
-          >
-            Close ✕
-          </button>
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      <div className="relative z-50 bg-white w-full max-w-md p-4 rounded-xl shadow-lg">
+        <div className="flex justify-between mb-2">
+          <h3 className="text-sm font-semibold">Edit Assumptions</h3>
+          <button onClick={onClose} className="text-xs text-slate-500">✕ Close</button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Property tax rate (%)"
-            value={(assumptions.taxRate * 100).toString()}
-            onChange={(v) => handleField('taxRate', v)}
-          />
-          <Field
-            label="Insurance rate (%)"
-            value={(assumptions.insuranceRate * 100).toString()}
-            onChange={(v) => handleField('insuranceRate', v)}
-          />
-          <Field
-            label="Maintenance (% of rent)"
-            value={(assumptions.maintenanceRate * 100).toString()}
-            onChange={(v) => handleField('maintenanceRate', v)}
-          />
-          <Field
-            label="Mgmt (% of rent)"
-            value={(assumptions.managementRate * 100).toString()}
-            onChange={(v) => handleField('managementRate', v)}
-          />
-          <Field
-            label="Vacancy rate (%)"
-            value={(assumptions.vacancyRate * 100).toString()}
-            onChange={(v) => handleField('vacancyRate', v)}
-          />
-          <Field
-            label="Loan rate (%)"
-            value={(assumptions.loanRate * 100).toString()}
-            onChange={(v) => handleField('loanRate', v)}
-          />
-          <Field
-            label="Down payment (%)"
-            value={(assumptions.downPayment * 100).toString()}
-            onChange={(v) => handleField('downPayment', v)}
-          />
+
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          {[
+            ['taxRate', 'Tax Rate (%)'],
+            ['insuranceRate', 'Insurance (%)'],
+            ['maintenanceRate', 'Maintenance (%)'],
+            ['managementRate', 'Management (%)'],
+            ['vacancyRate', 'Vacancy (%)'],
+            ['loanRate', 'Loan Rate (%)'],
+            ['downPayment', 'Down Payment (%)'],
+          ].map(([key, label]) => (
+            <div key={key}>
+              <label className="block text-[11px] font-semibold mb-1">{label}</label>
+              <input
+                className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px]"
+                value={(assumptions[key as keyof typeof assumptions] * 100).toString()}
+                onChange={(e) => setField(key as any, e.target.value)}
+              />
+            </div>
+          ))}
         </div>
-        <p className="text-[11px] text-slate-500">
-          Changes apply to future calculations for new searches. They won&apos;t retroactively
-          change any printed or exported reports.
-        </p>
       </div>
     </div>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">
-        {label}
-      </label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px]"
-      />
-    </div>
-  );
-}
+// -----------------------------------------------------------------------------
+// COMPARE MODAL
+// -----------------------------------------------------------------------------
 
-/* -------- Compare modal -------- */
+function CompareModal({ items, onClose }: any) {
+  const rows = [
+    {
+      label: 'Price',
+      render: (it: any) => `$${it.property.listPrice.toLocaleString()}`,
+    },
+    {
+      label: 'Beds / Baths',
+      render: (it: any) => `${it.property.beds} bd / ${it.property.baths} ba`,
+    },
+    {
+      label: 'Sqft',
+      render: (it: any) => it.property.sqft?.toLocaleString() || '?',
+    },
+    {
+      label: 'Cap Rate',
+      render: (it: any) => `${(it.metrics.capRate * 100).toFixed(1)}%`,
+    },
+    {
+      label: 'Cash-on-Cash',
+      render: (it: any) => `${(it.metrics.cashOnCash * 100).toFixed(1)}%`,
+    },
+    {
+      label: 'Rent',
+      render: (it: any) => `$${it.metrics.estimatedRent.toFixed(0)}/mo`,
+    },
+    {
+      label: 'NOI',
+      render: (it: any) => `$${it.metrics.annualNOI.toLocaleString()}`,
+    },
+    {
+      label: 'Projected Value',
+      render: (it: any) =>
+        `$${it.metrics.projectedValueYearN.toLocaleString()}`,
+    },
+    {
+      label: 'Score',
+      render: (it: any) => it.score,
+    },
+  ];
 
-function CompareModal({
-  items,
-  onClose,
-}: {
-  items: ScoredProperty[];
-  onClose: () => void;
-}) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
-      <div className="relative z-50 w-full max-w-4xl bg-white rounded-xl shadow-lg p-4 overflow-x-auto text-xs">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Compare properties ({items.length})
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      <div className="relative z-50 bg-white w-full max-w-4xl rounded-xl shadow-lg p-4 overflow-x-auto">
+        <div className="flex justify-between mb-2">
+          <h3 className="text-sm font-semibold">
+            Compare Properties ({items.length})
           </h3>
-          <button
-            className="text-[11px] text-slate-500 hover:text-slate-800"
-            onClick={onClose}
-          >
-            Close ✕
-          </button>
+          <button onClick={onClose} className="text-xs text-slate-500">✕ Close</button>
         </div>
-        <table className="min-w-full border border-slate-100 text-[11px]">
+
+        <table className="min-w-full border border-slate-100 text-xs">
           <thead className="bg-slate-50">
             <tr>
-              <th className="p-2 border-b border-r border-slate-100 text-left">
-                Metric
-              </th>
-              {items.map((it) => (
-                <th
-                  key={it.property.id}
-                  className="p-2 border-b border-r border-slate-100 text-left"
-                >
-                  <div className="font-semibold text-slate-800">
-                    {it.property.address}
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    ${it.property.listPrice.toLocaleString()}
-                  </div>
+              <th className="p-2 border-r border-slate-100 text-left">Metric</th>
+              {items.map((it: any) => (
+                <th key={it.property.id} className="p-2 border-r border-slate-100 text-left">
+                  {it.property.address}
                 </th>
               ))}
             </tr>
           </thead>
+
           <tbody>
-            {[
-              {
-                label: 'Beds / baths',
-                render: (it: ScoredProperty) =>
-                  `${it.property.beds ?? '?'} bd / ${it.property.baths ?? '?'} ba`,
-              },
-              {
-                label: 'Sqft',
-                render: (it: ScoredProperty) =>
-                  it.property.sqft
-                    ? `${it.property.sqft.toLocaleString()}`
-                    : '?',
-              },
-              {
-                label: 'Year built',
-                render: (it: ScoredProperty) => it.property.yearBuilt ?? '?',
-              },
-              {
-                label: 'Cap rate',
-                render: (it: ScoredProperty) =>
-                  `${(it.metrics.capRate * 100).toFixed(1)}%`,
-              },
-              {
-                label: 'Cash-on-cash',
-                render: (it: ScoredProperty) =>
-                  `${(it.metrics.cashOnCash * 100).toFixed(1)}%`,
-              },
-              {
-                label: 'Est. rent',
-                render: (it: ScoredProperty) =>
-                  `$${Math.round(it.metrics.estimatedRent).toLocaleString()}/mo`,
-              },
-              {
-                label: 'Annual NOI',
-                render: (it: ScoredProperty) =>
-                  `$${Math.round(it.metrics.annualNOI).toLocaleString()}`,
-              },
-              {
-                label: 'Projected value (horizon)',
-                render: (it: ScoredProperty) =>
-                  `$${Math.round(
-                    it.metrics.projectedValueYearN
-                  ).toLocaleString()}`,
-              },
-              {
-                label: 'Score',
-                render: (it: ScoredProperty) => it.score,
-              },
-            ].map((row) => (
+            {rows.map((row) => (
               <tr key={row.label} className="odd:bg-white even:bg-slate-50/40">
                 <td className="p-2 border-r border-slate-100 font-semibold text-slate-700">
                   {row.label}
                 </td>
-                {items.map((it) => (
-                  <td
-                    key={it.property.id + row.label}
-                    className="p-2 border-r border-slate-100 text-slate-700"
-                  >
-                    {row.render(it) as any}
+                {items.map((it: any) => (
+                  <td key={it.property.id + row.label} className="p-2 border-r border-slate-100">
+                    {row.render(it)}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
+
       </div>
     </div>
   );
