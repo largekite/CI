@@ -3,9 +3,9 @@ import OpenAI from "openai";
 
 export interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[];
-  keyPoints: string[];
-  rawText: string;
+  keyTakeaways: string[]; // UI label: "Highlights"
+  keyPoints: string[];    // UI label: "Details"
+  rawText: string;        // raw JSON from the model (for debugging if needed)
 }
 
 const client = new OpenAI({
@@ -21,14 +21,13 @@ export async function summarizeCfaArticle(
   }
 
   const modeInstruction = detail
-    ? "Provide more depth and nuance, with more specific key points and slightly longer explanations."
-    : "Keep the summary concise and focused on the most important practitioner-facing points.";
+    ? "Provide more depth and nuance, with more specific points and slightly longer explanations."
+    : "Keep the summary concise and focused on the most important points.";
 
   const systemPrompt = `
-You are a CFA charterholder and experienced investment practitioner.
+You summarize finance and research articles for a busy reader.
 
-Your job is to summarize CFA / academic finance articles for a busy reader.
-Return ONLY JSON with the requested fields.
+You MUST respond ONLY with valid JSON.
 `.trim();
 
   const userPrompt = `
@@ -42,12 +41,15 @@ Return STRICT JSON with this shape:
   "keyPoints": string[]
 }
 
+- "keyTakeaways" should be a short list of the most important highlights.
+- "keyPoints" can go into more detail and include additional points.
+
 Article:
 """${articleText}"""
 `.trim();
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini", // or another compatible model
+    model: "gpt-4o-mini", // adjust if you prefer another model
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -69,7 +71,8 @@ Article:
 
   try {
     parsed = JSON.parse(content);
-  } catch {
+  } catch (err) {
+    console.error("Failed to parse JSON from model:", err, "Raw:", content);
     throw new Error("Failed to parse model JSON.");
   }
 
