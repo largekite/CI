@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import jsPDF from "jspdf";
 
 interface ArticleSummary {
   title?: string;
-  keyTakeaways: string[]; // Highlights
-  keyPoints: string[];    // Details
+  keyTakeaways: string[]; // UI: Highlights
+  keyPoints: string[];    // UI: Details
   rawText: string;
 }
 
@@ -14,14 +13,26 @@ type SummaryLevel = "base" | "more" | "max";
 
 const MAX_CHARS = 20000;
 
+// Helper: extract text from TXT / MD / PDF files
 async function extractTextFromFile(file: File): Promise<string> {
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    // Basic PDF text extraction using pdfjs-dist
-    const arrayBuffer = await file.arrayBuffer();
-    const pdfjsLib = await import("pdfjs-dist/build/pdf");
+  const lowerName = file.name.toLowerCase();
 
-    // @ts-ignore - pdfjs types are a bit messy
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+  // PDF handling
+  if (
+    file.type === "application/pdf" ||
+    lowerName.endsWith(".pdf")
+  ) {
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Dynamic import for pdfjs (avoids build-time issues)
+    const pdfjsLib: any = await import("pdfjs-dist");
+    const pdfjsWorker: any = await import("pdfjs-dist/build/pdf.worker.mjs");
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+    });
     const pdf = await loadingTask.promise;
 
     let fullText = "";
@@ -34,7 +45,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     return fullText;
   }
 
-  // Fallback: plain text files
+  // Fallback: plain text formats
   return await file.text();
 }
 
@@ -51,6 +62,7 @@ export default function SummarizerPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Call API for article A with selected depth
   async function runSummary(level: SummaryLevel) {
     setError(null);
     setSummary(null);
@@ -84,6 +96,7 @@ export default function SummarizerPage() {
     }
   }
 
+  // Compare Article A and B at base level
   async function runComparison() {
     setError(null);
     setSummary(null);
@@ -142,6 +155,7 @@ export default function SummarizerPage() {
   async function handleFileUploadPrimary(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       const text = await extractTextFromFile(file);
       let truncated = text;
@@ -162,9 +176,12 @@ export default function SummarizerPage() {
     }
   }
 
-  async function handleFileUploadSecondary(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUploadSecondary(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       const text = await extractTextFromFile(file);
       let truncated = text;
@@ -203,12 +220,15 @@ export default function SummarizerPage() {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
-  function handleExportPdf() {
+  async function handleExportPdf() {
     if (!summary) return;
 
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     let y = 10;
 
@@ -260,13 +280,14 @@ export default function SummarizerPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
         Summary Tool
       </h1>
 
-      {/* PRIMARY INPUT + SUMMARY */}
+      {/* Primary input + summary */}
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        {/* LEFT: Primary input */}
+        {/* LEFT: Article A input */}
         <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
@@ -337,7 +358,7 @@ export default function SummarizerPage() {
           </div>
         </section>
 
-        {/* RIGHT: Primary summary */}
+        {/* RIGHT: Article A summary */}
         <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
             {loading && (
@@ -402,7 +423,7 @@ export default function SummarizerPage() {
         </section>
       </div>
 
-      {/* COMPARE SECTION */}
+      {/* Comparison section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-900">
@@ -472,7 +493,7 @@ export default function SummarizerPage() {
 
             {/* Comparison summaries */}
             <div className="grid gap-4 md:grid-cols-2">
-              {/* Article A summary (base) */}
+              {/* Article A summary preview */}
               <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm min-h-[180px]">
                 <h3 className="text-xs font-semibold text-gray-900 mb-2">
                   Article A (base)
@@ -493,7 +514,7 @@ export default function SummarizerPage() {
                 )}
               </div>
 
-              {/* Article B summary */}
+              {/* Article B summary preview */}
               <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm min-h-[180px]">
                 <h3 className="text-xs font-semibold text-gray-900 mb-2">
                   Article B (base)
