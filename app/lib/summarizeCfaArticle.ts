@@ -1,4 +1,4 @@
-// lib/summarizeCfaArticle.ts
+// app/lib/summarizeCfaArticle.ts
 import OpenAI from "openai";
 
 export interface ArticleSummary {
@@ -48,16 +48,24 @@ Article:
 """${articleText}"""
 `.trim();
 
-  const response = await client.responses.create({
-    model: "gpt-5.1-mini", // or "gpt-5.1" if you prefer
-    input: [
+  // ✅ Use chat completions (more widely supported)
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini", // or "gpt-4.1-mini" / "gpt-4o" if you have them
+    messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
+    temperature: 0.2,
   });
 
-  const fullText = (response as any).output_text as string;
+  const fullText =
+    completion.choices[0]?.message?.content?.toString().trim() ?? "";
 
+  if (!fullText) {
+    throw new Error("OpenAI returned an empty response.");
+  }
+
+  // --- Parse markdown into sections ---
   const keyTakeaways: string[] = [];
   const keyPoints: string[] = [];
 
@@ -66,6 +74,7 @@ Article:
 
   for (const line of lines) {
     const lower = line.toLowerCase();
+
     if (lower.startsWith("key takeaways")) {
       section = "takeaways";
       continue;
