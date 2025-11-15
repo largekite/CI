@@ -18,10 +18,7 @@ async function extractTextFromFile(file: File): Promise<string> {
   const lowerName = file.name.toLowerCase();
 
   // PDF handling
-  if (
-    file.type === "application/pdf" ||
-    lowerName.endsWith(".pdf")
-  ) {
+  if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
     const arrayBuffer = await file.arrayBuffer();
 
     // Dynamic import for pdfjs (avoids build-time issues)
@@ -52,17 +49,10 @@ async function extractTextFromFile(file: File): Promise<string> {
 export default function SummarizerPage() {
   const [articleText, setArticleText] = useState("");
   const [summary, setSummary] = useState<ArticleSummary | null>(null);
-
-  const [articleTextB, setArticleTextB] = useState("");
-  const [summaryB, setSummaryB] = useState<ArticleSummary | null>(null);
-  const [compareMode, setCompareMode] = useState(false);
-
   const [loading, setLoading] = useState(false);
-  const [loadingCompare, setLoadingCompare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Call API for article A with selected depth
   async function runSummary(level: SummaryLevel) {
     setError(null);
     setSummary(null);
@@ -96,63 +86,14 @@ export default function SummarizerPage() {
     }
   }
 
-  // Compare Article A and B at base level
-  async function runComparison() {
-    setError(null);
-    setSummary(null);
-    setSummaryB(null);
-    setCopied(false);
-
-    if (!articleText.trim() || !articleTextB.trim()) {
-      setError("Please provide text for both articles.");
-      return;
-    }
-
-    setLoadingCompare(true);
-    try {
-      const [resA, resB] = await Promise.all([
-        fetch("/api/summarize-cfa", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ articleText, level: "base" }),
-        }),
-        fetch("/api/summarize-cfa", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ articleText: articleTextB, level: "base" }),
-        }),
-      ]);
-
-      if (!resA.ok || !resB.ok) {
-        throw new Error("Comparison request failed.");
-      }
-
-      const jsonA = (await resA.json()) as ArticleSummary;
-      const jsonB = (await resB.json()) as ArticleSummary;
-      setSummary(jsonA);
-      setSummaryB(jsonB);
-    } catch (err) {
-      console.error(err);
-      setError("Unable to compare articles.");
-    } finally {
-      setLoadingCompare(false);
-    }
-  }
-
-  function handleClearPrimary() {
+  function handleClear() {
     setArticleText("");
     setSummary(null);
     setCopied(false);
     setError(null);
   }
 
-  function handleClearSecondary() {
-    setArticleTextB("");
-    setSummaryB(null);
-    setError(null);
-  }
-
-  async function handleFileUploadPrimary(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -169,31 +110,6 @@ export default function SummarizerPage() {
       setArticleText(truncated);
       setSummary(null);
       setCopied(false);
-      setError(msg);
-    } catch (err) {
-      console.error(err);
-      setError("Unable to read file.");
-    }
-  }
-
-  async function handleFileUploadSecondary(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await extractTextFromFile(file);
-      let truncated = text;
-      let msg: string | null = null;
-
-      if (text.length > MAX_CHARS) {
-        truncated = text.slice(0, MAX_CHARS);
-        msg = "Input truncated to first 20,000 characters.";
-      }
-
-      setArticleTextB(truncated);
-      setSummaryB(null);
       setError(msg);
     } catch (err) {
       console.error(err);
@@ -285,15 +201,12 @@ export default function SummarizerPage() {
         Summary Tool
       </h1>
 
-      {/* Primary input + summary */}
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        {/* LEFT: Article A input */}
+        {/* LEFT: input */}
         <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">
-                Article A
-              </span>
+              <span className="text-sm font-medium text-gray-900">Article</span>
               <span className="text-xs text-gray-500">
                 {articleText.length.toLocaleString()} /{" "}
                 {MAX_CHARS.toLocaleString()}
@@ -302,7 +215,7 @@ export default function SummarizerPage() {
 
             <textarea
               className="w-full min-h-[220px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              placeholder="Paste text for Article A…"
+              placeholder="Paste article text here…"
               value={articleText}
               maxLength={MAX_CHARS}
               onChange={(e) => setArticleText(e.target.value)}
@@ -314,7 +227,7 @@ export default function SummarizerPage() {
                 <input
                   type="file"
                   accept=".txt,.md,.text,application/pdf"
-                  onChange={handleFileUploadPrimary}
+                  onChange={handleFileUpload}
                   className="text-xs"
                 />
               </label>
@@ -349,7 +262,7 @@ export default function SummarizerPage() {
                 Even more detail
               </button>
               <button
-                onClick={handleClearPrimary}
+                onClick={handleClear}
                 className="text-xs text-gray-500 hover:text-gray-700"
               >
                 Clear
@@ -358,7 +271,7 @@ export default function SummarizerPage() {
           </div>
         </section>
 
-        {/* RIGHT: Article A summary */}
+        {/* RIGHT: summary */}
         <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
             {loading && (
@@ -421,122 +334,6 @@ export default function SummarizerPage() {
             )}
           </div>
         </section>
-      </div>
-
-      {/* Comparison section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-900">
-            Compare two articles
-          </span>
-          <label className="inline-flex items-center gap-2 text-xs text-gray-600">
-            <input
-              type="checkbox"
-              checked={compareMode}
-              onChange={(e) => setCompareMode(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <span>Enable comparison</span>
-          </label>
-        </div>
-
-        {compareMode && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Article B input */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-900">
-                  Article B
-                </span>
-                <span className="text-xs text-gray-500">
-                  {articleTextB.length.toLocaleString()} /{" "}
-                  {MAX_CHARS.toLocaleString()}
-                </span>
-              </div>
-
-              <textarea
-                className="w-full min-h-[180px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                placeholder="Paste text for Article B…"
-                value={articleTextB}
-                maxLength={MAX_CHARS}
-                onChange={(e) => setArticleTextB(e.target.value)}
-              />
-
-              <div className="flex flex-col gap-2 text-xs text-gray-600">
-                <label className="inline-flex items-center gap-2">
-                  <span>Upload (txt / md / pdf):</span>
-                  <input
-                    type="file"
-                    accept=".txt,.md,.text,application/pdf"
-                    onChange={handleFileUploadSecondary}
-                    className="text-xs"
-                  />
-                </label>
-              </div>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={runComparison}
-                  disabled={loadingCompare}
-                  className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
-                >
-                  {loadingCompare ? "Comparing..." : "Compare"}
-                </button>
-                <button
-                  onClick={handleClearSecondary}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            {/* Comparison summaries */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Article A summary preview */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm min-h-[180px]">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2">
-                  Article A (base)
-                </h3>
-                {summary && (
-                  <div className="space-y-2 text-xs text-gray-700">
-                    {summary.title && (
-                      <div className="font-medium">{summary.title}</div>
-                    )}
-                    {summary.keyTakeaways?.length > 0 && (
-                      <ul className="list-disc list-inside space-y-1">
-                        {summary.keyTakeaways.slice(0, 4).map((t, i) => (
-                          <li key={i}>{t}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Article B summary preview */}
-              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm min-h-[180px]">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2">
-                  Article B (base)
-                </h3>
-                {summaryB && (
-                  <div className="space-y-2 text-xs text-gray-700">
-                    {summaryB.title && (
-                      <div className="font-medium">{summaryB.title}</div>
-                    )}
-                    {summaryB.keyTakeaways?.length > 0 && (
-                      <ul className="list-disc list-inside space-y-1">
-                        {summaryB.keyTakeaways.slice(0, 4).map((t, i) => (
-                          <li key={i}>{t}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
