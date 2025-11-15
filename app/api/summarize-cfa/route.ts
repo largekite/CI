@@ -1,13 +1,14 @@
+// app/api/summarize-cfa/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { summarizeCfaArticle } from "../../lib/summarizeCfaArticle";
+import { summarizeCfaArticle, SummaryLevel } from "../../lib/summarizeCfaArticle";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const articleText = body?.articleText;
-    const detail = Boolean(body?.detail);
+    const articleText = body?.articleText as string | undefined;
+    const levelRaw = body?.level as string | undefined;
 
     if (!articleText || typeof articleText !== "string") {
       return NextResponse.json(
@@ -16,12 +17,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const MAX_CHARS = 20000;
     const trimmedText =
-      articleText.length > 20000
-        ? articleText.slice(0, 20000)
+      articleText.length > MAX_CHARS
+        ? articleText.slice(0, MAX_CHARS)
         : articleText;
 
-    const summary = await summarizeCfaArticle(trimmedText, detail);
+    const allowedLevels: SummaryLevel[] = ["base", "more", "max"];
+    const level: SummaryLevel = allowedLevels.includes(levelRaw as SummaryLevel)
+      ? (levelRaw as SummaryLevel)
+      : "base";
+
+    const summary = await summarizeCfaArticle(trimmedText, level);
 
     return NextResponse.json(summary, { status: 200 });
   } catch (err: any) {
