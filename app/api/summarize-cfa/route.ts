@@ -1,6 +1,9 @@
 // app/api/summarize-cfa/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { summarizeCfaArticle, SummaryLevel } from "../../lib/summarizeCfaArticle";
+import {
+  summarizeCfaArticle,
+  type SummaryLevel,
+} from "../../lib/summarizeCfaArticle";
 
 export const runtime = "nodejs";
 
@@ -10,7 +13,7 @@ export async function POST(req: NextRequest) {
     const articleText = body?.articleText as string | undefined;
     const levelRaw = body?.level as string | undefined;
 
-    if (!articleText || typeof articleText !== "string") {
+    if (!articleText || typeof articleText !== "string" || !articleText.trim()) {
       return NextResponse.json(
         { error: "Missing or invalid 'articleText'." },
         { status: 400 }
