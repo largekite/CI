@@ -13,51 +13,17 @@ type SummaryLevel = "base" | "more" | "max";
 
 const MAX_CHARS = 20000;
 
-async function extractTextFromFile(file: File): Promise<string> {
-  const lowerName = file.name.toLowerCase();
-
-  if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    // Convert to base64
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-
-    const res = await fetch("/api/pdf-to-text", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: base64 }),
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(
-        data?.error || data?.details || "Failed to extract text from PDF."
-      );
-    }
-
-    return String(data?.text || "");
-  }
-
-  // Non-PDF → plain text
-  return await file.text();
-}
-
-
-
 export default function SummarizerPage() {
   const [articleText, setArticleText] = useState("");
+  const [articleUrl, setArticleUrl] = useState("");
   const [summary, setSummary] = useState<ArticleSummary | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  const [loadingText, setLoadingText] = useState(false);
+  const [loadingUrl, setLoadingUrl] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function runSummary(level: SummaryLevel) {
+  async function summarizeText(level: SummaryLevel) {
     setError(null);
     setSummary(null);
     setCopied(false);
@@ -67,7 +33,7 @@ export default function SummarizerPage() {
       return;
     }
 
-    setLoading(true);
+    setLoadingText(true);
     try {
       const res = await fetch("/api/summarize-cfa", {
         method: "POST",
@@ -75,50 +41,60 @@ export default function SummarizerPage() {
         body: JSON.stringify({ articleText, level }),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
         throw new Error(data?.details || data?.error || "Request failed");
       }
 
-      const json = (await res.json()) as ArticleSummary;
-      setSummary(json);
-    } catch (err) {
+      setSummary(data as ArticleSummary);
+    } catch (err: any) {
       console.error(err);
-      setError("Unable to generate summary.");
+      setError(err?.message || "Unable to generate summary.");
     } finally {
-      setLoading(false);
+      setLoadingText(false);
     }
   }
 
-  function handleClear() {
+  async function summarizeUrl(level: SummaryLevel) {
+    setError(null);
+    setSummary(null);
+    setCopied(false);
+
+    const url = articleUrl.trim();
+    if (!url) {
+      setError("Please enter an article URL.");
+      return;
+    }
+
+    setLoadingUrl(true);
+    try {
+      const res = await fetch("/api/summarize-cfa-from-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, level }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.details || data?.error || "Failed to summarize URL.");
+      }
+
+      setSummary(data as ArticleSummary);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Failed to summarize URL.");
+    } finally {
+      setLoadingUrl(false);
+    }
+  }
+
+  function handleClearText() {
     setArticleText("");
     setSummary(null);
     setCopied(false);
     setError(null);
-  }
-
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await extractTextFromFile(file);
-      let truncated = text;
-      let msg: string | null = null;
-
-      if (text.length > MAX_CHARS) {
-        truncated = text.slice(0, MAX_CHARS);
-        msg = "Input truncated to first 20,000 characters.";
-      }
-
-      setArticleText(truncated);
-      setSummary(null);
-      setCopied(false);
-      setError(msg);
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Unable to read file.");
-    }
   }
 
   async function handleCopySummary() {
@@ -206,35 +182,102 @@ export default function SummarizerPage() {
       </h1>
 
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
-        {/* LEFT: input */}
+        {/* LEFT: URL + text input */}
         <section>
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900">Article</span>
-              <span className="text-xs text-gray-500">
-                {articleText.length.toLocaleString()} /{" "}
-                {MAX_CHARS.toLocaleString()}
-              </span>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm space-y-6">
+            {/* URL section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-900">
+                Article URL (optional)
+              </label>
+              <input
+                type="url"
+                value={articleUrl}
+                onChange={(e) => setArticleUrl(e.target.value)}
+                placeholder="https://example.com/article..."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+              <div className="flex flex-wrap gap-2 text-xs mt-1">
+                <button
+                  type="button"
+                  onClick={() => summarizeUrl("base")}
+                  disabled={loadingUrl}
+                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  {loadingUrl ? "Summarizing..." : "Summarize URL"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeUrl("more")}
+                  disabled={loadingUrl}
+                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  URL – More detail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeUrl("max")}
+                  disabled={loadingUrl}
+                  className="rounded-lg bg-gray-200 px-3 py-1.5 font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  URL – Even more
+                </button>
+              </div>
             </div>
 
-            <textarea
-              className="w-full min-h-[220px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              placeholder="Paste article text here…"
-              value={articleText}
-              maxLength={MAX_CHARS}
-              onChange={(e) => setArticleText(e.target.value)}
-            />
+            {/* Textarea section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">
+                  Article text
+                </span>
+                <span className="text-xs text-gray-500">
+                  {articleText.length.toLocaleString()} /{" "}
+                  {MAX_CHARS.toLocaleString()}
+                </span>
+              </div>
 
-            <div className="flex flex-col gap-2 text-xs text-gray-600">
-              <label className="inline-flex items-center gap-2">
-                <span>Upload (txt / md / text):</span>
-                <input
-                  type="file"
-                  accept=".txt,.md,.text,application/pdf"
-                  onChange={handleFileUpload}
-                  className="text-xs"
-                />
-              </label>
+              <textarea
+                className="w-full min-h-[220px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm leading-relaxed text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                placeholder="Paste article text here, if you prefer text instead of URL…"
+                value={articleText}
+                maxLength={MAX_CHARS}
+                onChange={(e) => setArticleText(e.target.value)}
+              />
+
+              <div className="flex items-center gap-3 flex-wrap mt-2">
+                <button
+                  type="button"
+                  onClick={() => summarizeText("base")}
+                  disabled={loadingText}
+                  className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
+                >
+                  {loadingText ? "Working..." : "Summarize text"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeText("more")}
+                  disabled={loadingText}
+                  className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  Text – More detail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => summarizeText("max")}
+                  disabled={loadingText}
+                  className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
+                >
+                  Text – Even more
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearText}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Clear text
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -242,49 +285,19 @@ export default function SummarizerPage() {
                 {error}
               </div>
             )}
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <button
-                onClick={() => runSummary("base")}
-                disabled={loading}
-                className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-800 disabled:opacity-60"
-              >
-                {loading ? "Working..." : "Summarize"}
-              </button>
-              <button
-                onClick={() => runSummary("more")}
-                disabled={loading}
-                className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
-              >
-                More detail
-              </button>
-              <button
-                onClick={() => runSummary("max")}
-                disabled={loading}
-                className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 disabled:opacity-60"
-              >
-                Even more detail
-              </button>
-              <button
-                onClick={handleClear}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Clear
-              </button>
-            </div>
           </div>
         </section>
 
         {/* RIGHT: summary */}
         <section>
           <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm min-h-[260px] flex flex-col">
-            {loading && (
+            {(loadingText || loadingUrl) && (
               <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">
                 <div className="animate-pulse">Generating summary…</div>
               </div>
             )}
 
-            {!loading && summary && (
+            {!loadingText && !loadingUrl && summary && (
               <div className="space-y-4 flex-1">
                 {summary.title && (
                   <h2 className="text-lg font-semibold text-gray-900">
@@ -320,15 +333,17 @@ export default function SummarizerPage() {
               </div>
             )}
 
-            {!loading && summary && (
+            {!loadingText && !loadingUrl && summary && (
               <div className="mt-4 flex justify-end gap-3 text-xs">
                 <button
+                  type="button"
                   onClick={handleCopySummary}
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
                   {copied ? "Copied" : "Copy"}
                 </button>
                 <button
+                  type="button"
                   onClick={handleExportPdf}
                   className="text-gray-700 hover:text-gray-900 font-medium"
                 >
