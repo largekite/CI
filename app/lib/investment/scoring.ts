@@ -38,14 +38,15 @@ export function estimateRent(property: RawProperty): number {
 export function computeMetrics(
   property: RawProperty,
   assumptions: InvestmentAssumptions,
-  horizonYears: number
+  horizonYears: number,
+  strategy: Strategy     
 ): InvestmentMetrics {
   const price = property.listPrice || 0;
   const rentMonthly = estimateRent(property);
 
   const grossRentAnnual = rentMonthly * 12;
 
-  // Property-tax & insurance as % of value
+  // Property taxes & insurance
   const taxAnnual = price * assumptions.taxRate;
   const insuranceAnnual = price * assumptions.insuranceRate;
 
@@ -68,20 +69,18 @@ export function computeMetrics(
 
   const capRate = price > 0 ? annualNOI / price : 0;
 
-  // Cash-on-cash (very rough): NOI minus interest-only debt service / equity
+  // Loan + CoC
   const equity = price * assumptions.downPayment;
   const loanAmount = price - equity;
-  // Approx interest-only annual payment (ignoring amortization)
   const interestAnnual = loanAmount * assumptions.loanRate;
 
   const preTaxCashFlow = annualNOI - interestAnnual;
-  const cashOnCash =
-    equity > 0 ? preTaxCashFlow / equity : 0;
+  const cashOnCash = equity > 0 ? preTaxCashFlow / equity : 0;
 
-  // Value projection (simple constant appreciation derived from capRate & strategy)
-  const baseAppreciation =
-    strategyBaseAppreciation(capRate, { strategy: 'rental' }); // neutral base
+  // Appreciation based on strategy
+  const baseAppreciation = strategyBaseAppreciation(capRate, { strategy: 'rental' });
   const strategyAdj = strategyBaseAppreciation(capRate, { strategy: 'appreciation' });
+
   const usedAppreciation =
     strategy === 'appreciation'
       ? strategyAdj
@@ -140,7 +139,12 @@ export function scoreProperty(
 ): ScoredProperty {
   const assumptions = ctx.assumptions || DEFAULT_ASSUMPTIONS;
 
-  const metrics = computeMetrics(property, assumptions, ctx.horizonYears);
+  const metrics = computeMetrics(
+    property,
+    assumptions,
+    ctx.horizonYears,
+    ctx.strategy 
+  );
   const { capRate, cashOnCash, projectedValueYearN } = metrics;
 
   // Scoring: combine cap rate, CoC, appreciation into a 0–100 score
