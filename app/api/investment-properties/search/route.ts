@@ -43,29 +43,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Fetch from RapidAPI Realtor
+    // 1) Fetch from RapidAPI (Realtor Search)
     const realtorResults = await fetchRealtorListingsByZip(zip);
 
-    // 2. Pre-filter based on user's criteria
+    // 2) Filter in-code based on inputs
     const filtered = realtorResults.filter((l) => {
-      if (minPrice && l.list_price < minPrice) return false;
-      if (maxPrice && l.list_price > maxPrice) return false;
-
+      const price = l.list_price ?? 0;
       const beds = l.description?.beds ?? 0;
-      if (minBeds && beds < minBeds) return false;
-
       const baths = Number(l.description?.baths_consolidated ?? 0);
+
+      if (minPrice && price < minPrice) return false;
+      if (maxPrice && price > maxPrice) return false;
+      if (minBeds && beds < minBeds) return false;
       if (minBaths && baths < minBaths) return false;
 
       return true;
     });
 
-    // 3. Convert Realtor API shape → RawProperty
+    // 3) Map Realtor → RawProperty
     const rawProperties: RawProperty[] = filtered.map((r) =>
       mapRealtorResultToRawProperty(r, zip)
     );
 
-    // 4. Score properties → ScoredProperty[]
+    // 4) Score each property
     const scored: ScoredProperty[] = rawProperties.map((p) =>
       evaluateProperty(p, {
         strategy,
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ results: scored });
   } catch (err: any) {
-    console.error('Investment search error:', err);
+    console.error('Investment property search error:', err);
     return NextResponse.json(
       { error: err.message || 'Server error' },
       { status: 500 }
