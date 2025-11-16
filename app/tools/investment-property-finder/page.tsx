@@ -106,55 +106,69 @@ export default function InvestmentPropertyFinderPage() {
     });
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setResults([]);
+ const handleSearch = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setResults([]);
 
-    const zipList = form.zips
-      .split(',')
-      .map((z) => z.trim())
-      .filter((z) => z.length > 0);
+  const zipList = form.zips
+    .split(',')
+    .map((z) => z.trim())
+    .filter((z) => z.length > 0);
 
-    if (!zipList.length) {
-      setError('Please enter at least one ZIP code');
-      setLoading(false);
-      return;
-    }
+  if (!zipList.length) {
+    setError('Please enter at least one ZIP code');
+    setLoading(false);
+    return;
+  }
 
-    try {
-      const accumulated: ScoredProperty[] = [];
+  try {
+    const accumulated: ScoredProperty[] = [];
 
-      for (const zip of zipList) {
-        const payload = {
-          zip,
-          minPrice: form.minPrice ? Number(form.minPrice) : undefined,
-          maxPrice: form.maxPrice ? Number(form.maxPrice) : undefined,
-          minBeds: form.minBeds ? Number(form.minBeds) : undefined,
-          minBaths: form.minBaths ? Number(form.minBaths) : undefined,
-          strategy: form.strategy,
-          timeHorizonYears: Number(form.timeHorizonYears || '5'),
-        };
+    for (const zip of zipList) {
+      const payload = {
+        zip,
+        minPrice: form.minPrice ? Number(form.minPrice) : undefined,
+        maxPrice: form.maxPrice ? Number(form.maxPrice) : undefined,
+        minBeds: form.minBeds ? Number(form.minBeds) : undefined,
+        minBaths: form.minBaths ? Number(form.minBaths) : undefined,
+        strategy: form.strategy,
+        timeHorizonYears: Number(form.timeHorizonYears || '5'),
+      };
 
-        const res = await fetch('/api/investment-properties/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+      console.log('Calling /api/investment-properties/search with:', payload);
 
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Search failed');
-        accumulated.push(...json.results);
+      const res = await fetch('/api/investment-properties/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      console.log('API status:', res.status);
+
+      const json = await res.json().catch(() => null);
+      console.log('API response JSON:', json);
+
+      if (!res.ok) {
+        throw new Error(json?.error || `API error ${res.status}`);
       }
 
-      setResults(accumulated);
-    } catch (err: any) {
-      setError(err.message || 'Server error');
-    } finally {
-      setLoading(false);
+      if (!json?.results) {
+        throw new Error('API returned no results field');
+      }
+
+      accumulated.push(...json.results);
     }
-  };
+
+    setResults(accumulated);
+  } catch (err: any) {
+    console.error('Search error:', err);
+    setError(err.message || 'Server error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filteredSorted = useMemo(() => {
     let arr = [...results];
