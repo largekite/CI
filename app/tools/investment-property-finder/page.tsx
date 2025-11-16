@@ -994,7 +994,7 @@ function AssumptionModal({
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs">
           {fields.map(([key, label]) => (
-            <div key={key}>
+             <div key={String(key)}>
               <FieldLabel>{label}</FieldLabel>
               <input
                 className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-teal-500/70"
