@@ -1,5 +1,19 @@
 // app/api/investment-properties/search/route.ts
+
 import { NextResponse } from 'next/server';
+import {
+  RawProperty,
+  ScoredProperty,
+  Strategy,
+} from '@/app/lib/investment/types';
+import {
+  evaluateProperty,
+  DEFAULT_ASSUMPTIONS,
+} from '@/app/lib/investment/scoring';
+import {
+  fetchRealtorListingsByZip,
+  mapRealtorResultToRawProperty,
+} from '@/app/lib/investment/realtor-provider';
 
 export async function POST(req: Request) {
   try {
@@ -12,33 +26,57 @@ export async function POST(req: Request) {
       minBaths,
       strategy,
       timeHorizonYears,
-    } = body;
+    } = body as {
+      zip: string;
+      minPrice?: number;
+      maxPrice?: number;
+      minBeds?: number;
+      minBaths?: number;
+      strategy: Strategy;
+      timeHorizonYears: number;
+    };
 
-    const listings = await fetchRealtorListingsByZip(zip);
+    if (!zip) {
+      return NextResponse.json(
+        { error: 'ZIP code is required' },
+        { status: 400 }
+      );
+    }
 
-    // (optionally filter further in your own code)
-    const filtered = listings.filter((l) => {
+    // 1. Fetch from RapidAPI Realtor
+    const realtorResults = await fetchRealtorListingsByZip(zip);
+
+    // 2. Pre-filter based on user's criteria
+    const filtered = realtorResults.filter((l) => {
       if (minPrice && l.list_price < minPrice) return false;
       if (maxPrice && l.list_price > maxPrice) return false;
-      if (minBeds && (l.description?.beds || 0) < minBeds) return false;
-      if (minBaths && Number(l.description?.baths_consolidated || 0) < minBaths)
-        return false;
+
+      const beds = l.description?.beds ?? 0;
+      if (minBeds && beds < minBeds) return false;
+
+      const baths = Number(l.description?.baths_consolidated ?? 0);
+      if (minBaths && baths < minBaths) return false;
+
       return true;
     });
 
-    const rawProperties = filtered.map((r) => mapRealtorResultToRawProperty(r, zip));
+    // 3. Convert Realtor API shape → RawProperty
+    const rawProperties: RawProperty[] = filtered.map((r) =>
+      mapRealtorResultToRawProperty(r, zip)
+    );
 
-    // here you run your investment metric engine to get ScoredProperty[]
-    const scored = rawProperties.map((p) =>
-      scoreProperty(p, {
+    // 4. Score properties → ScoredProperty[]
+    const scored: ScoredProperty[] = rawProperties.map((p) =>
+      evaluateProperty(p, {
         strategy,
-        horizonYears: timeHorizonYears,
+        horizonYears: timeHorizonYears || 5,
+        assumptions: DEFAULT_ASSUMPTIONS,
       })
     );
 
     return NextResponse.json({ results: scored });
   } catch (err: any) {
-    console.error(err);
+    console.error('Investment search error:', err);
     return NextResponse.json(
       { error: err.message || 'Server error' },
       { status: 500 }
