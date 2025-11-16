@@ -2,63 +2,98 @@
 
 import type { RawProperty } from './types';
 
-const API_HOST = 'realtor.p.rapidapi.com';
-const API_KEY = process.env.RAPIDAPI_KEY!;
+const API_HOST = 'realtor-search.p.rapidapi.com';
+const API_KEY = process.env.RAPIDAPI_KEY;
 
-// Shape based on your sample JSON
+// Shape based on the JSON you pasted (data.home_search.results[])
 export interface RealtorSearchHome {
   property_id: string;
   listing_id: string;
+  status?: string;
   list_price: number;
   description?: {
-    beds?: number;
+    sold_date?: string | null;
     baths_consolidated?: string;
+    beds?: number;
+    lot_sqft?: number;
     sqft?: number;
+    stories?: number;
+    sold_price?: number | null;
   };
   location?: {
     address?: {
-      line?: string;
-      city?: string;
-      state?: string;
-      state_code?: string;
       postal_code?: string;
-      coordinate?: { lat?: number; lon?: number };
+      state?: string;
+      street_name?: string;
+      street_number?: string | null;
+      city?: string;
+      coordinate?: {
+        lat?: number;
+        lon?: number;
+      };
+      state_code?: string;
+      line?: string;
     };
   };
   photos?: { href?: string }[];
   primary_photo?: { href?: string };
   href?: string;
+  permalink?: string;
 }
 
-/** Fetch Realtor listings for a ZIP */
+/**
+ * Fetch Realtor listings for a ZIP using RapidAPI (realtor-search.p.rapidapi.com)
+ * Endpoint: GET /properties/search-buy?location={zip}&status=for_sale&sort=newest&limit=50
+ */
 export async function fetchRealtorListingsByZip(
   zip: string
 ): Promise<RealtorSearchHome[]> {
-  const url = `https://realtor.p.rapidapi.com/properties/v3/list`;
+  if (!API_KEY) {
+    throw new Error('RAPIDAPI_KEY is not set in environment variables');
+  }
 
-  const payload = {
-    limit: 50,
-    offset: 0,
-    postal_code: zip,
-    status: ['for_sale'],
-  };
+  const params = new URLSearchParams({
+    location: zip,
+    status: 'for_sale',
+    sort: 'newest',
+    limit: '50',
+    page: '1',
+  });
+
+  const url = `https://${API_HOST}/properties/search-buy?${params.toString()}`;
 
   const res = await fetch(url, {
-    method: 'POST',
+    method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
       'x-rapidapi-key': API_KEY,
       'x-rapidapi-host': API_HOST,
     },
-    body: JSON.stringify(payload),
+    cache: 'no-store',
   });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(
+      `Realtor Search API error: ${res.status} ${res.statusText} ${text}`
+    );
+  }
 
   const json = await res.json();
 
-  return json?.data?.home_search?.results ?? [];
+  // Using your sample structure:
+  // {
+  //   data: { home_search: { results: [ ... ] } },
+  //   meta: {...},
+  //   status: true,
+  //   message: "Successful"
+  // }
+  const results = json?.data?.home_search?.results ?? [];
+  return results as RealtorSearchHome[];
 }
 
-/** Map Realtor response → RawProperty */
+/**
+ * Map a RealtorSearchHome object → RawProperty used by your scoring engine + UI.
+ */
 export function mapRealtorResultToRawProperty(
   r: RealtorSearchHome,
   zipFallback: string
@@ -67,7 +102,7 @@ export function mapRealtorResultToRawProperty(
 
   const images = (r.photos || [])
     .map((p) => p.href)
-    .filter((x): x is string => !!x);
+    .filter((href): href is string => !!href);
 
   const primaryPhoto = r.primary_photo?.href || images[0];
 
@@ -86,8 +121,8 @@ export function mapRealtorResultToRawProperty(
     beds: r.description?.beds,
     baths,
     sqft: r.description?.sqft,
-    yearBuilt: undefined,
-    hoaMonthly: undefined,
+    yearBuilt: undefined,          // not provided by this endpoint
+    hoaMonthly: undefined,         // not provided by this endpoint
     imageUrl: primaryPhoto,
     images,
     externalUrl: r.href,
