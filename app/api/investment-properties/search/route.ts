@@ -47,18 +47,38 @@ export async function POST(req: Request) {
     const realtorResults = await fetchRealtorListingsByZip(zip);
 
     // 2) Filter in-code based on inputs
-    const filtered = realtorResults.filter((l) => {
-      const price = l.list_price ?? 0;
-      const beds = l.description?.beds ?? 0;
-      const baths = Number(l.description?.baths_consolidated ?? 0);
+  // 2) Filter in-code based on inputs (defensive)
+const filtered = realtorResults.filter((l) => {
+  const price = l.list_price ?? 0;
 
-      if (minPrice && price < minPrice) return false;
-      if (maxPrice && price > maxPrice) return false;
-      if (minBeds && beds < minBeds) return false;
-      if (minBaths && baths < minBaths) return false;
+  // raw values from API
+  const rawBeds = l.description?.beds;
+  const rawBaths = l.description?.baths_consolidated;
 
-      return true;
-    });
+  // parse but allow undefined
+  const beds =
+    typeof rawBeds === 'number'
+      ? rawBeds
+      : rawBeds != null
+      ? Number(rawBeds)
+      : undefined;
+
+  const baths =
+    typeof rawBaths === 'string' || typeof rawBaths === 'number'
+      ? Number(rawBaths)
+      : undefined;
+
+  // price filters always apply
+  if (minPrice && price < minPrice) return false;
+  if (maxPrice && price > maxPrice) return false;
+
+  // only enforce bed/bath filters if the API actually sent those fields
+  if (minBeds && beds != null && beds < minBeds) return false;
+  if (minBaths && baths != null && baths < minBaths) return false;
+
+  return true;
+});
+
 
     // 3) Map Realtor → RawProperty
     const rawProperties: RawProperty[] = filtered.map((r) =>
