@@ -392,9 +392,6 @@ export default function InvestmentPropertyFinderPage() {
             </div>
           )}
 
-          <p className="mt-2 text-[10px] text-slate-400 leading-snug">
-            This tool is for educational use only and is not personalized financial advice.
-          </p>
         </section>
 
         {/* SORT / SUMMARY */}
