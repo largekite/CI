@@ -1,10 +1,6 @@
 // app/lib/pdf/investmentReport.ts
 
-import type { ScoredProperty } from './types'; // optional: see note below
-
-// If you don't have a shared ScoredProperty type here, you can inline the shapes:
-// type InvestmentMetrics = { ... } etc.
-// or just type everything as `any` to move fast.
+// No external type imports necessary — item is treated as a dynamic object.
 
 export interface PdfAssumptions {
   taxRate: number;
@@ -17,7 +13,7 @@ export interface PdfAssumptions {
 }
 
 export async function exportInvestmentPdf(options: {
-  item: any;            // ScoredProperty
+  item: any;           // must contain .property, .metrics, .score
   horizon: number;
   strategy: string;
   assumptions: PdfAssumptions;
@@ -25,6 +21,7 @@ export async function exportInvestmentPdf(options: {
   const { item, horizon, strategy, assumptions } = options;
   const { property, metrics, score } = item;
 
+  // Dynamic import to avoid SSR issues
   const { jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
 
@@ -33,100 +30,39 @@ export async function exportInvestmentPdf(options: {
     format: 'a4',
   });
 
-  const marginLeft = 40;
-  let cursorY = 40;
+  const navy = '#0C1F3F';
+  const teal = '#0BB5B7';
 
+  const marginX = 40;
+  let y = 40;
+
+  /* -----------------------------------------------------
+   *  HEADER
+   * ----------------------------------------------------- */
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('LargeKite Capital – Investment Snapshot', marginLeft, cursorY);
+  doc.setFontSize(18);
+  doc.setTextColor(navy);
+  doc.text('LargeKite Capital', marginX, y);
 
-  cursorY += 20;
+  y += 20;
+  doc.setFontSize(12);
+  doc.setTextColor('#555');
   doc.setFont('helvetica', 'normal');
+  doc.text('Investment Property Report', marginX, y);
+
+  y += 8;
   doc.setFontSize(10);
   doc.text(
-    `Generated on ${new Date().toLocaleDateString()} • Score ${score}/100`,
-    marginLeft,
-    cursorY
+    `Generated on ${new Date().toLocaleDateString()} – Score: ${score}/100`,
+    marginX,
+    y
   );
 
-  // PROPERTY HEADER
-  cursorY += 30;
+  /* -----------------------------------------------------
+   *  PROPERTY DETAILS
+   * ----------------------------------------------------- */
+  y += 25;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(property.address, marginLeft, cursorY);
-
-  cursorY += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(
-    `${property.city}, ${property.state} ${property.zip}`,
-    marginLeft,
-    cursorY
-  );
-
-  cursorY += 16;
-  doc.text(
-    [
-      `List price: $${property.listPrice.toLocaleString()}`,
-      `Beds/Baths: ${property.beds ?? '?'} / ${property.baths ?? '?'}`,
-      `Sqft: ${property.sqft?.toLocaleString() ?? '?'}`,
-      `Strategy: ${strategy.replace(/_/g, ' ')} • Horizon: ${horizon} years`,
-    ].join('   •   '),
-    marginLeft,
-    cursorY
-  );
-
-  // METRICS TABLE
-  cursorY += 26;
-  autoTable(doc, {
-    startY: cursorY,
-    head: [['Metric', 'Value']],
-    body: [
-      ['Estimated Rent (monthly)', `$${Math.round(metrics.estimatedRent).toLocaleString()}`],
-      ['Annual NOI', `$${Math.round(metrics.annualNOI).toLocaleString()}`],
-      ['Cap Rate', `${(metrics.capRate * 100).toFixed(1)} %`],
-      ['Cash-on-Cash', `${(metrics.cashOnCash * 100).toFixed(1)} %`],
-      ['Projected Value (horizon)', `$${Math.round(metrics.projectedValueYearN).toLocaleString()}`],
-    ],
-    styles: { fontSize: 10 },
-    margin: { left: marginLeft, right: marginLeft },
-  });
-
-  const afterMetricsY = (doc as any).lastAutoTable.finalY || cursorY + 60;
-  cursorY = afterMetricsY + 20;
-
-  // ASSUMPTIONS TABLE
-  autoTable(doc, {
-    startY: cursorY,
-    head: [['Assumption', 'Value']],
-    body: [
-      ['Tax rate', `${(assumptions.taxRate * 100).toFixed(2)} %`],
-      ['Insurance rate', `${(assumptions.insuranceRate * 100).toFixed(2)} %`],
-      ['Maintenance (of rent)', `${(assumptions.maintenanceRate * 100).toFixed(1)} %`],
-      ['Management (of rent)', `${(assumptions.managementRate * 100).toFixed(1)} %`],
-      ['Vacancy', `${(assumptions.vacancyRate * 100).toFixed(1)} %`],
-      ['Loan rate', `${(assumptions.loanRate * 100).toFixed(2)} %`],
-      ['Down payment', `${(assumptions.downPayment * 100).toFixed(1)} %`],
-    ],
-    styles: { fontSize: 10 },
-    margin: { left: marginLeft, right: marginLeft },
-  });
-
-  const afterAssumptionsY = (doc as any).lastAutoTable.finalY || cursorY + 60;
-
-  // FOOTER DISCLAIMER
-  const footerY = afterAssumptionsY + 30;
-  doc.setFontSize(8);
-  doc.setTextColor(120);
-  doc.text(
-    'This report is for educational purposes only and does not constitute personalized investment advice.',
-    marginLeft,
-    footerY
-  );
-
-  const filenameSafeAddress = String(property.address || 'property')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .toLowerCase();
-
-  doc.save(`largekite-${filenameSafeAddress}.pdf`);
-}
+  doc.setTextColor(navy);
+  doc.text(property.address || 'Proper
