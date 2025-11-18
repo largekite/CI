@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { colors } from '@/app/lib/theme';
-import { exportInvestmentPdf } from '@/app/lib/pdf/investmentReport';
+// import { exportInvestmentPdf } from '@/app/lib/pdf/investmentReport';
 
 type ViewMode = 'list' | 'grid' | 'map';
 type Strategy = 'rental' | 'appreciation' | 'short_term_rental';
@@ -265,110 +265,110 @@ export default function InvestmentPropertyFinderPage() {
       <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* SEARCH PANEL */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sm:p-5 space-y-4">
-          <form onSubmit={handleSearch} className="grid gap-4 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <FieldLabel>ZIP Codes</FieldLabel>
-              <input
-                name="zips"
-                value={form.zips}
-                onChange={handleChange}
-                placeholder="e.g. 63011, 63021, 63141"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2">
+                <FieldLabel>ZIP Codes</FieldLabel>
+                <input
+                  name="zips"
+                  value={form.zips}
+                  onChange={handleChange}
+                  placeholder="e.g. 63011, 63021, 63141"
+                  className="form-input w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
+                />
+              </div>
+              <InputField
+                name="minPrice"
+                label="Min Price"
+                placeholder="200000"
+                form={form}
+                handleChange={handleChange}
+              />
+              <InputField
+                name="maxPrice"
+                label="Max Price"
+                placeholder="450000"
+                form={form}
+                handleChange={handleChange}
               />
             </div>
 
-            <InputField
-              name="minPrice"
-              label="Min Price"
-              placeholder="200000"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="maxPrice"
-              label="Max Price"
-              placeholder="450000"
-              form={form}
-              handleChange={handleChange}
-            />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <InputField
+                name="minBeds"
+                label="Min Beds"
+                form={form}
+                handleChange={handleChange}
+              />
+              <InputField
+                name="minBaths"
+                label="Min Baths"
+                form={form}
+                handleChange={handleChange}
+              />
+              <SelectField
+                name="strategy"
+                label="Strategy"
+                form={form}
+                handleChange={handleChange}
+                options={[
+                  { value: 'rental', label: 'Buy & Hold Rental' },
+                  { value: 'appreciation', label: 'Appreciation Focused' },
+                  { value: 'short_term_rental', label: 'Short-Term Rental' },
+                ]}
+              />
+              <SelectField
+                name="timeHorizonYears"
+                label="Horizon (yrs)"
+                form={form}
+                handleChange={handleChange}
+                options={[
+                  { value: '3', label: '3' },
+                  { value: '5', label: '5' },
+                  { value: '10', label: '10' },
+                ]}
+              />
+            </div>
 
-            <InputField
-              name="minBeds"
-              label="Min Beds"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="minBaths"
-              label="Min Baths"
-              form={form}
-              handleChange={handleChange}
-            />
-
-            <SelectField
-              name="strategy"
-              label="Strategy"
-              form={form}
-              handleChange={handleChange}
-              options={[
-                { value: 'rental', label: 'Buy & Hold Rental' },
-                { value: 'appreciation', label: 'Appreciation Focused' },
-                { value: 'short_term_rental', label: 'Short-Term Rental' },
-              ]}
-            />
-
-            <SelectField
-              name="timeHorizonYears"
-              label="Horizon (yrs)"
-              form={form}
-              handleChange={handleChange}
-              options={[
-                { value: '3', label: '3' },
-                { value: '5', label: '5' },
-                { value: '10', label: '10' },
-              ]}
-            />
-
-            <InputField
-              name="minCapRate"
-              label="Min Cap Rate (%)"
-              placeholder="5"
-              form={form}
-              handleChange={handleChange}
-            />
-            <InputField
-              name="maxHoa"
-              label="Max HOA ($/mo)"
-              placeholder="250"
-              form={form}
-              handleChange={handleChange}
-            />
-
-            <div className="flex items-end gap-2 md:col-span-2">
-              <button
-                type="submit"
-                className="inline-flex justify-center w-full md:w-auto px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                style={{ backgroundColor: colors.brandTeal }}
-                disabled={loading}
-              >
-                {loading ? 'Searching…' : 'Find Properties'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveSearch}
-                className="hidden md:inline-flex px-3 py-2 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Save search
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowAssumptions(true)}
-                className="ml-auto px-3 py-2 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Edit assumptions
-              </button>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <InputField
+                name="minCapRate"
+                label="Min Cap Rate (%)"
+                placeholder="5"
+                form={form}
+                handleChange={handleChange}
+              />
+              <InputField
+                name="maxHoa"
+                label="Max HOA ($/mo)"
+                placeholder="250"
+                form={form}
+                handleChange={handleChange}
+              />
+              <div className="sm:col-span-2 flex items-end gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ backgroundColor: colors.brandTeal }}
+                  disabled={loading}
+                >
+                  {loading ? 'Searching…' : 'Find Properties'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSearch}
+                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAssumptions(true)}
+                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Settings
+                </button>
+              </div>
             </div>
           </form>
 
@@ -395,13 +395,13 @@ export default function InvestmentPropertyFinderPage() {
         </section>
 
         {/* SORT / SUMMARY */}
-        <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <SortPills sortKey={sortKey} setSortKey={setSortKey} />
-          <div className="flex items-center gap-2 text-[11px] text-slate-600">
+          <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-600">
             <span>{filteredSorted.length} properties</span>
             {compareIds.size > 0 && (
               <button
-                className="inline-flex px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700"
+                className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 font-medium"
                 onClick={() => setShowCompareModal(true)}
               >
                 Compare {compareIds.size}
@@ -541,7 +541,7 @@ function InputField({
         value={form[name]}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
+        className="form-input w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
       />
     </div>
   );
@@ -561,7 +561,7 @@ function SelectField({
         name={name}
         value={form[name]}
         onChange={handleChange}
-        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
+        className="form-input w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/70"
       >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
@@ -822,12 +822,7 @@ function PropertyDetailDrawer({
   const maxVal = Math.max(...projection.map((p) => p.value));
 
   const handleExportPdf = async () => {
-    await exportInvestmentPdf({
-      item,
-      horizon,
-      strategy,
-      assumptions,
-    });
+    alert('PDF export temporarily disabled');
   };
 
   return (

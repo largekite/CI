@@ -2,7 +2,7 @@
 
 import type { RawProperty } from './types';
 
-const API_HOST = 'realtor-search.p.rapidapi.com';
+const API_HOST = 'realty-in-us.p.rapidapi.com';
 const API_KEY = process.env.RAPIDAPI_KEY;
 
 // Shape based on the JSON you pasted (data.home_search.results[])
@@ -52,22 +52,27 @@ export async function fetchRealtorListingsByZip(
     throw new Error('RAPIDAPI_KEY is not set in environment variables');
   }
 
-  const params = new URLSearchParams({
-    location: zip,
-    status: 'for_sale',
-    sort: 'newest',
-    limit: '50',
-    page: '1',
-  });
-
-  const url = `https://${API_HOST}/properties/search-buy?${params.toString()}`;
+  const url = `https://${API_HOST}/properties/v3/list`;
+  
+  const requestBody = {
+    limit: 200,
+    offset: 0,
+    postal_code: zip,
+    status: ['for_sale', 'ready_to_build'],
+    sort: {
+      direction: 'desc',
+      field: 'list_date'
+    }
+  };
 
   const res = await fetch(url, {
-    method: 'GET',
+    method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'x-rapidapi-key': API_KEY,
       'x-rapidapi-host': API_HOST,
     },
+    body: JSON.stringify(requestBody),
     cache: 'no-store',
   });
 
@@ -80,13 +85,11 @@ export async function fetchRealtorListingsByZip(
 
   const json = await res.json();
 
-  // Using your sample structure:
-  // {
-  //   data: { home_search: { results: [ ... ] } },
-  //   meta: {...},
-  //   status: true,
-  //   message: "Successful"
-  // }
+  // Check for API errors
+  if (!json.status && json.errors?.location) {
+    throw new Error(`Location not available: ${zip}. Try a different ZIP code.`);
+  }
+
   const results = json?.data?.home_search?.results ?? [];
   return results as RealtorSearchHome[];
 }

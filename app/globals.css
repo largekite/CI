@@ -35,7 +35,8 @@ details p{ margin:8px 0 0 0 }
 .fineprint{ font-size:12px; margin-top:6px }
 .tiny{ font-size:12px; color:var(--muted) }
 label{ display:block; margin:10px 0; color:var(--muted) }
-input,textarea{ width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink) }
+input,textarea{ width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink) }
+.form-input{ padding:10px 12px !important; }
 /* Market pill */
 .pill{ display:inline-block; margin-left:8px; padding:8px 12px; border-radius:999px; font-weight:700; border:1px solid var(--line) }
 .pill.hot{ background:#1faa74; color:#081510; border-color:transparent } .pill.cool{ background:#3a6ff2; color:#0a0f1f; border-color:transparent } .pill.neutral{ background:#c7a534; color:#1a1403; border-color:transparent }

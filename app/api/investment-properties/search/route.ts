@@ -14,9 +14,12 @@ import {
   fetchRealtorListingsByZip,
   mapRealtorResultToRawProperty,
 } from '@/app/lib/investment/realtor-provider';
+import { getMockProperties } from '@/app/lib/investment/mock-data';
 
 export async function POST(req: Request) {
   try {
+    console.log('🔍 Investment property search started');
+    
     const body = await req.json();
     const {
       zip,
@@ -36,6 +39,8 @@ export async function POST(req: Request) {
       timeHorizonYears: number;
     };
 
+    console.log('📋 Search parameters:', { zip, minPrice, maxPrice, minBeds, minBaths, strategy, timeHorizonYears });
+
     if (!zip) {
       return NextResponse.json(
         { error: 'ZIP code is required' },
@@ -43,49 +48,54 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check if API key is configured
+    if (!process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_KEY === 'your_rapidapi_key_here') {
+      console.error('❌ RAPIDAPI_KEY not configured');
+      return NextResponse.json(
+        { 
+          error: 'API key not configured. Please set RAPIDAPI_KEY in .env.local',
+          details: 'Sign up at https://rapidapi.com/apidojo/api/realtor-search/ to get your API key'
+        },
+        { status: 500 }
+      );
+    }
+
     // 1) Fetch from RapidAPI (Realtor Search)
+    console.log(`🏠 Fetching properties for ZIP: ${zip}`);
     const realtorResults = await fetchRealtorListingsByZip(zip);
+    console.log(`📊 Found ${realtorResults.length} raw properties from API`);
+    
+    const filtered = realtorResults.filter((l) => {
+      const price = l.list_price ?? 0;
+      const rawBeds = l.description?.beds;
+      const rawBaths = l.description?.baths_consolidated;
+      const beds = typeof rawBeds === 'number' ? rawBeds : rawBeds != null ? Number(rawBeds) : undefined;
+      const baths = typeof rawBaths === 'string' || typeof rawBaths === 'number' ? Number(rawBaths) : undefined;
+      
+      // Filter by ZIP if provided (flexible matching)
+      const propertyZip = l.location?.address?.postal_code;
+      if (zip && propertyZip && zip.length >= 3) {
+        const zipPrefix = zip.substring(0, 3);
+        if (!propertyZip.startsWith(zipPrefix)) {
+          return false;
+        }
+      }
+      
+      // Price filters
+      if (minPrice && price < minPrice) return false;
+      if (maxPrice && price > maxPrice) return false;
+      
+      // Bed/bath filters
+      if (minBeds && beds != null && beds < minBeds) return false;
+      if (minBaths && baths != null && baths < minBaths) return false;
+      
+      return true;
+    });
+    
+    const rawProperties = filtered.map((r) => mapRealtorResultToRawProperty(r, zip));
 
-    // 2) Filter in-code based on inputs
-  // 2) Filter in-code based on inputs (defensive)
-const filtered = realtorResults.filter((l) => {
-  const price = l.list_price ?? 0;
-
-  // raw values from API
-  const rawBeds = l.description?.beds;
-  const rawBaths = l.description?.baths_consolidated;
-
-  // parse but allow undefined
-  const beds =
-    typeof rawBeds === 'number'
-      ? rawBeds
-      : rawBeds != null
-      ? Number(rawBeds)
-      : undefined;
-
-  const baths =
-    typeof rawBaths === 'string' || typeof rawBaths === 'number'
-      ? Number(rawBaths)
-      : undefined;
-
-  // price filters always apply
-  if (minPrice && price < minPrice) return false;
-  if (maxPrice && price > maxPrice) return false;
-
-  // only enforce bed/bath filters if the API actually sent those fields
-  if (minBeds && beds != null && beds < minBeds) return false;
-  if (minBaths && baths != null && baths < minBaths) return false;
-
-  return true;
-});
-
-
-    // 3) Map Realtor → RawProperty
-    const rawProperties: RawProperty[] = filtered.map((r) =>
-      mapRealtorResultToRawProperty(r, zip)
-    );
-
-    // 4) Score each property
+    // Score each property
+    console.log(`🎯 Scoring ${rawProperties.length} properties with strategy: ${strategy}`);
     const scored: ScoredProperty[] = rawProperties.map((p) =>
       evaluateProperty(p, {
         strategy,
@@ -94,12 +104,32 @@ const filtered = realtorResults.filter((l) => {
       })
     );
 
+    console.log(`✅ Successfully scored ${scored.length} properties`);
     return NextResponse.json({ results: scored });
   } catch (err: any) {
-    console.error('Investment property search error:', err);
+    console.error('❌ Investment property search error:', err);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Server error';
+    let statusCode = 500;
+    
+    if (err.message?.includes('RAPIDAPI_KEY')) {
+      errorMessage = 'API key configuration error';
+      statusCode = 500;
+    } else if (err.message?.includes('Realtor Search API error')) {
+      errorMessage = 'External API error: ' + err.message;
+      statusCode = 502;
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
     return NextResponse.json(
-      { error: err.message || 'Server error' },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        details: err.message,
+        timestamp: new Date().toISOString()
+      },
+      { status: statusCode }
     );
   }
 }
