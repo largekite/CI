@@ -1,0 +1,61 @@
+// Mock data for testing when Realtor API is unavailable
+import type { RawProperty } from './types';
+
+export function getMockProperties(zip: string): RawProperty[] {
+  return [
+    {
+      id: 'mock-1',
+      address: '123 Main St',
+      city: 'St. Charles',
+      state: 'MO',
+      zip: zip,
+      listPrice: 285000,
+      beds: 3,
+      baths: 2,
+      sqft: 1450,
+      yearBuilt: 2018,
+      hoaMonthly: 0,
+      imageUrl: 'https://via.placeholder.com/400x300/4f46e5/ffffff?text=Property+1',
+      images: ['https://via.placeholder.com/400x300/4f46e5/ffffff?text=Property+1'],
+      externalUrl: '#',
+      latitude: 38.7881,
+      longitude: -90.4974,
+    },
+    {
+      id: 'mock-2',
+      address: '456 Oak Ave',
+      city: 'O\'Fallon',
+      state: 'MO',
+      zip: zip,
+      listPrice: 195000,
+      beds: 2,
+      baths: 1,
+      sqft: 1100,
+      yearBuilt: 2015,
+      hoaMonthly: 125,
+      imageUrl: 'https://via.placeholder.com/400x300/059669/ffffff?text=Property+2',
+      images: ['https://via.placeholder.com/400x300/059669/ffffff?text=Property+2'],
+      externalUrl: '#',
+      latitude: 38.8106,
+      longitude: -90.6998,
+    },
+    {
+      id: 'mock-3',
+      address: '789 Pine Dr',
+      city: 'St. Peters',
+      state: 'MO',
+      zip: zip,
+      listPrice: 425000,
+      beds: 4,
+      baths: 3,
+      sqft: 2200,
+      yearBuilt: 2020,
+      hoaMonthly: 200,
+      imageUrl: 'https://via.placeholder.com/400x300/dc2626/ffffff?text=Property+3',
+      images: ['https://via.placeholder.com/400x300/dc2626/ffffff?text=Property+3'],
+      externalUrl: '#',
+      latitude: 38.7875,
+      longitude: -90.6298,
+    }
+  ];
+}
