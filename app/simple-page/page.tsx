@@ -1,1 +1,1 @@
-export { default } from '../tools/investment-property-finder/simple-page';
+export { default } from '../tools/investment-property-finder';

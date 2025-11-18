@@ -11,6 +11,14 @@ export interface RealtorSearchHome {
   listing_id: string;
   status?: string;
   list_price: number;
+  flags?: {
+    is_pending?: boolean;
+    is_contingent?: boolean;
+    is_sold?: boolean;
+  };
+  lead_attributes?: {
+    lead_type?: string;
+  };
   description?: {
     sold_date?: string | null;
     baths_consolidated?: string;
