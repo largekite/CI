@@ -58,7 +58,7 @@ export async function fetchRealtorListingsByZip(
     limit: 200,
     offset: 0,
     postal_code: zip,
-    status: ['for_sale', 'ready_to_build'],
+    status: ['for_sale', 'ready_to_build', 'coming_soon'],
     sort: {
       direction: 'desc',
       field: 'list_date'
