@@ -88,13 +88,13 @@ export async function GET(request: NextRequest) {
 
     // Find trending topics (simple keyword extraction)
     const allText = posts.map(p => `${p.title} ${p.content}`).join(' ').toLowerCase();
-    const words = allText.match(/\b[a-z]{3,}\b/g) || [];
-    const wordCounts = words.reduce((acc: Record<string, number>, word) => {
+    const words: string[] = allText.match(/\b[a-z]{3,}\b/g) || [];
+    const wordCounts = words.reduce((acc: Record<string, number>, word: string) => {
       if (!['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'].includes(word)) {
         acc[word] = (acc[word] || 0) + 1;
       }
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
     const trendingTopics = Object.entries(wordCounts)
       .sort(([,a], [,b]) => b - a)
