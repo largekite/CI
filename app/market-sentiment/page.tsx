@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useId } from 'react';
+import Link from 'next/link';
 import { fmtAsOf } from '@/app/lib/fmt';
 
 /* ===================== Types ===================== */
@@ -538,7 +539,14 @@ export default function MarketSentiment() {
   );
 
   return (
-    <main className="section">
+    <>
+      <header className="nav">
+        <div className="brand">
+          <Link href="/">LargeKite<span>Capital</span></Link>
+        </div>
+      </header>
+      
+      <main className="section">
       <div className="eyebrow">Market dashboard</div>
       <h1 className="h2">Market Sentiment</h1>
 
@@ -705,6 +713,7 @@ export default function MarketSentiment() {
           </div>
         </div>
       )}
-    </main>
+      </main>
+    </>
   );
 }

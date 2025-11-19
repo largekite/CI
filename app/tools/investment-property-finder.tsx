@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function SimpleInvestmentFinder() {
   const [form, setForm] = useState({
@@ -101,7 +102,14 @@ export default function SimpleInvestmentFinder() {
   }, [sortBy, minScore]);
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <>
+      <header className="nav">
+        <div className="brand">
+          <Link href="/">LargeKite<span>Capital</span></Link>
+        </div>
+      </header>
+      
+      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '30px', color: '#1f2937' }}>Investment Property Finder</h1>
       
       <form onSubmit={handleSubmit} style={{ 
@@ -504,6 +512,7 @@ export default function SimpleInvestmentFinder() {
           100% { transform: rotate(360deg); }
         }
       `}</style>
-    </div>
+      </div>
+    </>
   );
 }
