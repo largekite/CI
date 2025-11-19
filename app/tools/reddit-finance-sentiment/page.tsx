@@ -29,6 +29,7 @@ interface RedditData {
     timeframe: string;
     totalPosts: number;
     fetchedAt: string;
+    note?: string;
   };
 }
 
@@ -283,6 +284,11 @@ export default function RedditFinanceSentiment() {
               {data && (
                 <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>
                   Last updated: {new Date(data.metadata.fetchedAt).toLocaleString()}
+                  {(data.metadata as any).note && (
+                    <div style={{ color: '#f59e0b', marginTop: '4px', fontSize: '12px' }}>
+                      ⚠️ {(data.metadata as any).note}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -369,6 +375,11 @@ export default function RedditFinanceSentiment() {
                   </h3>
                   <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
                     Last updated: {new Date(data.metadata.fetchedAt).toLocaleTimeString()}
+                    {(data.metadata as any).note && (
+                      <div style={{ color: '#f59e0b', marginTop: '4px', fontSize: '12px' }}>
+                        ⚠️ Using demo data
+                      </div>
+                    )}
                   </div>
                 </div>
 
