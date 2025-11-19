@@ -1,3 +1,9 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = { experimental: { typedRoutes: true } };
-module.exports = nextConfig;
+const nextConfig = {
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+}
+
+module.exports = nextConfig
