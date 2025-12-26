@@ -10,7 +10,112 @@ export default function SimpleInvestmentFinder() {
     maxPrice: '',
     strategy: 'rental'
   });
-  const [isGeocodingLocation, setIsGeocodingLocation] = useState(false);
+  const [cityInput, setCityInput] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const priceRanges = [
+    { label: 'Any', min: '', max: '' },
+    { label: 'Under $200K', min: '', max: '200000' },
+    { label: '$200K - $300K', min: '200000', max: '300000' },
+    { label: '$300K - $400K', min: '300000', max: '400000' },
+    { label: '$400K - $500K', min: '400000', max: '500000' },
+    { label: '$500K - $750K', min: '500000', max: '750000' },
+    { label: '$750K - $1M', min: '750000', max: '1000000' },
+    { label: 'Over $1M', min: '1000000', max: '' }
+  ];
+
+  const handleCitySearch = (value) => {
+    setCityInput(value);
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // If it's a number, treat as ZIP code
+    if (/^\d+$/.test(value)) {
+      setForm({...form, location: value});
+      setCitySuggestions([]);
+      return;
+    }
+
+    // City name search with debounce
+    if (value.length < 3) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    // Debounce API call
+    const timeout = setTimeout(async () => {
+      try {
+        const searchRes = await fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(value)}&country=USA&format=json&addressdetails=1&limit=5`, {
+          headers: {
+            'User-Agent': 'LargeKiteCapital/1.0'
+          }
+        });
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const suggestions = searchData
+            .map(item => {
+              const address = item.address || {};
+              const city = address.city || address.town || address.village || item.display_name.split(',')[0];
+              const county = address.county || '';
+              const state = address['ISO3166-2-lvl4']?.split('-')[1] || address.state || '';
+              return {
+                city,
+                county,
+                state,
+                zip: '',
+                lat: item.lat,
+                lon: item.lon,
+                displayName: county ? `${city}, ${county}, ${state}` : `${city}, ${state}`
+              };
+            })
+            .filter(item => item.state)
+            .slice(0, 5);
+          setCitySuggestions(suggestions);
+          setShowSuggestions(suggestions.length > 0);
+        }
+      } catch (error) {
+        console.error('City search error:', error);
+      }
+    }, 500);
+    
+    setSearchTimeout(timeout);
+  };
+
+  const selectCity = async (suggestion) => {
+    setCityInput(`${suggestion.city}, ${suggestion.state}`);
+    setShowSuggestions(false);
+    
+    if (suggestion.zip) {
+      setForm({...form, location: suggestion.zip});
+      return;
+    }
+    
+    try {
+      const zipRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${suggestion.lat}&lon=${suggestion.lon}&format=json`, {
+        headers: {
+          'User-Agent': 'LargeKiteCapital/1.0'
+        }
+      });
+      if (zipRes.ok) {
+        const zipData = await zipRes.json();
+        const zip = zipData.address?.postcode?.split('-')[0] || '';
+        if (zip) {
+          setForm({...form, location: zip});
+        }
+      }
+    } catch (error) {
+      console.error('Zip lookup error:', error);
+    }
+  };
+
+  const handlePriceRangeChange = (e) => {
+    const range = priceRanges[e.target.value];
+    setForm({...form, minPrice: range.min, maxPrice: range.max});
+  };
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -121,15 +226,16 @@ export default function SimpleInvestmentFinder() {
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           
-          <div>
+          <div style={{ position: 'relative' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              ZIP Code
+              City or ZIP Code
             </label>
             <input
               type="text"
-              value={form.location}
-              onChange={(e) => setForm({...form, location: e.target.value})}
-              placeholder="63040"
+              value={cityInput || form.location}
+              onChange={(e) => handleCitySearch(e.target.value)}
+              onFocus={() => citySuggestions.length > 0 && setShowSuggestions(true)}
+              placeholder="Enter city name or ZIP"
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -139,52 +245,67 @@ export default function SimpleInvestmentFinder() {
                 outline: 'none'
               }}
               onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                setTimeout(() => setShowSuggestions(false), 200);
+              }}
             />
+            {showSuggestions && citySuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                marginTop: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                zIndex: 1000,
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+              }}>
+                {citySuggestions.map((suggestion, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => selectCity(suggestion)}
+                    style={{
+                      padding: '10px 16px',
+                      cursor: 'pointer',
+                      borderBottom: idx < citySuggestions.length - 1 ? '1px solid #f3f4f6' : 'none'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    {suggestion.displayName}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Min Price
+              Price Range
             </label>
-            <input
-              type="number"
-              value={form.minPrice}
-              onChange={(e) => setForm({...form, minPrice: e.target.value})}
-              placeholder="200000"
+            <select
+              onChange={handlePriceRangeChange}
               style={{
                 width: '100%',
                 padding: '12px 16px',
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
                 fontSize: '14px',
-                outline: 'none'
+                outline: 'none',
+                background: 'white'
               }}
               onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
               onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Max Price
-            </label>
-            <input
-              type="number"
-              value={form.maxPrice}
-              onChange={(e) => setForm({...form, maxPrice: e.target.value})}
-              placeholder="500000"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
+            >
+              {priceRanges.map((range, idx) => (
+                <option key={idx} value={idx}>{range.label}</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -421,27 +542,50 @@ export default function SimpleInvestmentFinder() {
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '4px' }}>
                   ${item.property.listPrice.toLocaleString()}
                 </div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '12px' }}>
+                  Down: ${(item.property.listPrice * 0.2).toLocaleString()} • Loan: ${(item.property.listPrice * 0.8).toLocaleString()}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '12px', color: '#f59e0b', display: 'flex', flexDirection: 'column' }} title="Total cash needed to buy: 20% down payment + 3% closing costs">
+                    <span style={{ fontWeight: '600' }}>${((item.property.listPrice * 0.2) + (item.property.listPrice * 0.03)).toLocaleString()}</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Cash to Buy</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#8b5cf6', display: 'flex', flexDirection: 'column' }} title="Estimated monthly mortgage payment (principal + interest)">
+                    <span style={{ fontWeight: '600' }}>${((item.property.listPrice * 0.8 * 0.007)).toLocaleString()}/mo</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Mortgage</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ec4899', display: 'flex', flexDirection: 'column' }} title="Monthly profit: Rent minus mortgage, taxes, insurance, and maintenance">
+                    <span style={{ fontWeight: '600' }}>${(item.metrics.estimatedRent - (item.property.listPrice * 0.8 * 0.007) - (item.metrics.estimatedRent * 0.3)).toLocaleString()}/mo</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Monthly Profit</span>
+                  </div>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '12px', color: '#059669' }}>
-                    Cap Rate: {(item.metrics.capRate * 100).toFixed(1)}%
+                  <div style={{ fontSize: '12px', color: '#059669', display: 'flex', flexDirection: 'column', position: 'relative' }} title="Annual return on total property value">
+                    <span style={{ fontWeight: '600' }}>{(item.metrics.capRate * 100).toFixed(1)}%</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Return on Value</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#0891b2' }}>
-                    Cash-on-Cash: {(item.metrics.cashOnCash * 100).toFixed(1)}%
+                  <div style={{ fontSize: '12px', color: '#0891b2', display: 'flex', flexDirection: 'column', position: 'relative' }} title="Annual return on your cash invested">
+                    <span style={{ fontWeight: '600' }}>{(item.metrics.cashOnCash * 100).toFixed(1)}%</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Return on Cash</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#7c2d12' }}>
-                    Est. Rent: ${item.metrics.estimatedRent.toLocaleString()}/mo
+                  <div style={{ fontSize: '12px', color: '#7c2d12', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: '600' }}>${item.metrics.estimatedRent.toLocaleString()}/mo</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Monthly Rent</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#be185d' }}>
-                    NOI: ${item.metrics.annualNOI.toLocaleString()}/yr
+                  <div style={{ fontSize: '12px', color: '#be185d', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: '600' }}>${item.metrics.annualNOI.toLocaleString()}</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Annual Profit</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#1e40af' }}>
-                    5yr Value: ${item.metrics.projectedValueYearN.toLocaleString()}
+                  <div style={{ fontSize: '12px', color: '#1e40af', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: '600' }}>${item.metrics.projectedValueYearN.toLocaleString()}</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Value in 5 Years</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#166534' }}>
-                    Total Return: {(((item.metrics.projectedValueYearN - item.property.listPrice) / item.property.listPrice) * 100).toFixed(1)}%
+                  <div style={{ fontSize: '12px', color: '#166534', display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: '600' }}>{(((item.metrics.projectedValueYearN - item.property.listPrice) / item.property.listPrice) * 100).toFixed(1)}%</span>
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>5yr Gain</span>
                   </div>
                 </div>
                 <div style={{ fontSize: '16px', fontWeight: '600', color: '#7c3aed', marginBottom: '8px' }}>
