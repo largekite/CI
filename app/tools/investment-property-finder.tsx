@@ -261,7 +261,6 @@ export default function SimpleInvestmentFinder() {
               type="text"
               value={cityInput || form.location}
               onChange={(e) => handleCitySearch(e.target.value)}
-              onFocus={() => citySuggestions.length > 0 && setShowSuggestions(true)}
               placeholder="Enter city name or ZIP"
               style={{
                 width: '100%',
@@ -271,7 +270,10 @@ export default function SimpleInvestmentFinder() {
                 fontSize: '14px',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onFocus={(e) => {
+                citySuggestions.length > 0 && setShowSuggestions(true);
+                e.target.style.borderColor = '#3b82f6';
+              }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#e5e7eb';
                 setTimeout(() => setShowSuggestions(false), 200);
