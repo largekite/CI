@@ -366,17 +366,17 @@ export default function SimpleInvestmentFinder() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !form.location}
           style={{
             marginTop: '20px',
             padding: '12px 24px',
-            background: loading ? '#9ca3af' : '#3b82f6',
+            background: (loading || !form.location) ? '#9ca3af' : '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
             fontSize: '16px',
             fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
+            cursor: (loading || !form.location) ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
