@@ -128,18 +128,8 @@ export default function SimpleInvestmentFinder() {
   const [mortgageRates, setMortgageRates] = useState({ rate30: 6.5, rate15: 5.8 });
 
   useEffect(() => {
-    Promise.all([
-      fetch('https://www.freddiemac.com/pmms/pmms30.json').then(r => r.json()),
-      fetch('https://www.freddiemac.com/pmms/pmms15.json').then(r => r.json())
-    ])
-      .then(([data30, data15]) => {
-        const rate30 = (data30 && data30.length > 0) ? parseFloat(data30[0].rate) : 6.5;
-        const rate15 = (data15 && data15.length > 0) ? parseFloat(data15[0].rate) : 5.8;
-        setMortgageRates({ rate30, rate15 });
-      })
-      .catch(() => {
-        setMortgageRates({ rate30: 6.5, rate15: 5.8 });
-      });
+    // Use static rates since Freddie Mac API has CORS restrictions
+    setMortgageRates({ rate30: 6.5, rate15: 5.8 });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -181,7 +171,7 @@ export default function SimpleInvestmentFinder() {
   };
 
   const applyFiltersAndSort = (data) => {
-    let filtered = data.filter(item => item.score >= minScore);
+    let filtered = data.filter(item => item?.property?.listPrice && item.score >= minScore);
     
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -586,8 +576,8 @@ export default function SimpleInvestmentFinder() {
                   {item.property.city}, {item.property.state} {item.property.zip}
                 </p>
                 <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
-                  {item.property.beds} beds • {item.property.baths} baths • {item.property.sqft?.toLocaleString()} sqft
-                  {item.property.sqft && (
+                  {item.property.beds} beds{item.property.baths ? ` • ${item.property.baths} baths` : ''}{item.property.sqft ? ` • ${item.property.sqft.toLocaleString()} sqft` : ''}
+                  {item.property.sqft && item.property.listPrice && (
                     <span style={{ color: '#6b7280', marginLeft: '8px' }}>
                       (${Math.round(item.property.listPrice / item.property.sqft)}/sqft)
                     </span>
