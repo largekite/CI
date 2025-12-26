@@ -125,6 +125,22 @@ export default function SimpleInvestmentFinder() {
   const [minScore, setMinScore] = useState(0);
   const [selectedForComparison, setSelectedForComparison] = useState(new Set());
   const [showComparison, setShowComparison] = useState(false);
+  const [mortgageRates, setMortgageRates] = useState({ rate30: 6.5, rate15: 5.8 });
+
+  useEffect(() => {
+    Promise.all([
+      fetch('https://www.freddiemac.com/pmms/pmms30.json').then(r => r.json()),
+      fetch('https://www.freddiemac.com/pmms/pmms15.json').then(r => r.json())
+    ])
+      .then(([data30, data15]) => {
+        const rate30 = (data30 && data30.length > 0) ? parseFloat(data30[0].rate) : 6.5;
+        const rate15 = (data15 && data15.length > 0) ? parseFloat(data15[0].rate) : 5.8;
+        setMortgageRates({ rate30, rate15 });
+      })
+      .catch(() => {
+        setMortgageRates({ rate30: 6.5, rate15: 5.8 });
+      });
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -215,7 +231,28 @@ export default function SimpleInvestmentFinder() {
       </header>
       
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '30px', color: '#1f2937' }}>Investment Property Finder</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <h1 style={{ margin: 0, color: '#1f2937' }}>Investment Property Finder</h1>
+        <div style={{ 
+          background: '#eff6ff', 
+          padding: '12px 16px', 
+          borderRadius: '8px', 
+          border: '1px solid #bfdbfe',
+          fontSize: '13px'
+        }}>
+          <div style={{ color: '#1e40af', fontWeight: '600', marginBottom: '4px' }}>Current Mortgage Rates:</div>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div>
+              <span style={{ color: '#1f2937', fontWeight: '700' }}>{mortgageRates.rate30.toFixed(2)}%</span>
+              <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: '4px' }}>30-yr</span>
+            </div>
+            <div>
+              <span style={{ color: '#1f2937', fontWeight: '700' }}>{mortgageRates.rate15.toFixed(2)}%</span>
+              <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: '4px' }}>15-yr</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <form onSubmit={handleSubmit} style={{ 
         background: 'white', 
@@ -530,14 +567,31 @@ export default function SimpleInvestmentFinder() {
               )}
               
               <div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#1f2937' }}>
-                  {item.property.address}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>
+                    {item.property.address}
+                  </h3>
+                  <span style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    background: item.score >= 75 ? '#dcfce7' : item.score >= 50 ? '#fef3c7' : '#fee2e2',
+                    color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b'
+                  }}>
+                    {item.score >= 75 ? '⭐ Excellent' : item.score >= 50 ? '✓ Good' : '⚠ Fair'}
+                  </span>
+                </div>
                 <p style={{ margin: '0 0 8px 0', color: '#6b7280', fontSize: '14px' }}>
                   {item.property.city}, {item.property.state} {item.property.zip}
                 </p>
                 <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
                   {item.property.beds} beds • {item.property.baths} baths • {item.property.sqft?.toLocaleString()} sqft
+                  {item.property.sqft && (
+                    <span style={{ color: '#6b7280', marginLeft: '8px' }}>
+                      (${Math.round(item.property.listPrice / item.property.sqft)}/sqft)
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -558,7 +612,9 @@ export default function SimpleInvestmentFinder() {
                     <span style={{ fontSize: '10px', color: '#6b7280' }}>Mortgage</span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#ec4899', display: 'flex', flexDirection: 'column' }} title="Monthly profit: Rent minus mortgage, taxes, insurance, and maintenance">
-                    <span style={{ fontWeight: '600' }}>${(item.metrics.estimatedRent - (item.property.listPrice * 0.8 * 0.007) - (item.metrics.estimatedRent * 0.3)).toLocaleString()}/mo</span>
+                    <span style={{ fontWeight: '600', color: (item.metrics.cashOnCash * (item.property.listPrice * 0.25) / 12) >= 0 ? '#059669' : '#dc2626' }}>
+                      ${((item.metrics.cashOnCash * (item.property.listPrice * 0.25) / 12)).toLocaleString()}/mo
+                    </span>
                     <span style={{ fontSize: '10px', color: '#6b7280' }}>Monthly Profit</span>
                   </div>
                 </div>
@@ -588,8 +644,17 @@ export default function SimpleInvestmentFinder() {
                     <span style={{ fontSize: '10px', color: '#6b7280' }}>5yr Gain</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#7c3aed', marginBottom: '8px' }}>
-                  Investment Score: {item.score}/100
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '600', 
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  marginBottom: '8px',
+                  background: item.score >= 75 ? '#dcfce7' : item.score >= 50 ? '#fef3c7' : '#fee2e2',
+                  color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b',
+                  textAlign: 'center'
+                }}>
+                  Score: {item.score}/100
                 </div>
                 {item.property.externalUrl && (
                   <a
