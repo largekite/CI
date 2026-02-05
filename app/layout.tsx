@@ -6,8 +6,8 @@ import { BRAND_LEGAL } from './lib/brand';
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: 'LargeKiteCapitalIntelligence — Independent Finance & Intelligence Consulting',
-  description: 'Human-led finance & investment consulting. AI is our tool, not the product.',
+  title: 'LargeKite Capital — AI Investment Decision Engine',
+  description: 'AI That Tells You If an Investment Is Worth It. Analyze properties and investments in seconds. Get real ROI, cashflow, risks, and smart scenarios powered by AI and CFA-led finance models.',
 };
 
 export default function RootLayout({
