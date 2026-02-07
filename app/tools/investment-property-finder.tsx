@@ -216,7 +216,7 @@ export default function SimpleInvestmentFinder() {
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/">LargeKite<span>Capital</span></Link>
+          <Link href="/">LargeKite<span>Capital Intelligence</span></Link>
         </div>
       </header>
       
