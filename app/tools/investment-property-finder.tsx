@@ -8,8 +8,13 @@ export default function SimpleInvestmentFinder() {
     location: '',
     minPrice: '',
     maxPrice: '',
-    strategy: 'rental'
+    strategy: 'rental',
+    propertyLink: ''
   });
+  const [inputMode, setInputMode] = useState<'property' | 'city'>('city');
+  const [propertyInput, setPropertyInput] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [cityInput, setCityInput] = useState('');
   const [citySuggestions, setCitySuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -25,14 +30,87 @@ export default function SimpleInvestmentFinder() {
     { label: 'Over $1M', min: '1000000', max: '' }
   ];
 
+  const handlePropertySearch = async (value: string) => {
+    setPropertyInput(value);
+
+    // If it looks like a URL, don't show suggestions
+    if (value.startsWith('http')) {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+      return;
+    }
+
+    if (value.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?street=${encodeURIComponent(value)}&country=USA&format=json&addressdetails=1&limit=8`, {
+          headers: { 'User-Agent': 'LargeKiteCapital/1.0' }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.length > 0) {
+            const suggestions = data.map((item: any) => ({
+              display: item.display_name,
+              address: item.address,
+              lat: item.lat,
+              lon: item.lon
+            }));
+            setAddressSuggestions(suggestions);
+            setShowAddressSuggestions(true);
+          } else {
+            setAddressSuggestions([]);
+          }
+        }
+      } catch (error) {
+        console.error('Address search error:', error);
+        setAddressSuggestions([]);
+      }
+    }, 300);
+
+    setSearchTimeout(timeout);
+  };
+
+  const selectAddress = async (suggestion: any) => {
+    setPropertyInput(suggestion.display);
+    setShowAddressSuggestions(false);
+    const zip = suggestion.address?.postcode?.split('-')[0] || '';
+    if (zip) {
+      setForm({...form, location: zip});
+    } else {
+      try {
+        const zipRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${suggestion.lat}&lon=${suggestion.lon}&format=json`, {
+          headers: { 'User-Agent': 'LargeKiteCapital/1.0' }
+        });
+        if (zipRes.ok) {
+          const zipData = await zipRes.json();
+          const foundZip = zipData.address?.postcode?.split('-')[0] || '';
+          if (foundZip) {
+            setForm({...form, location: foundZip});
+          }
+        }
+      } catch (error) {
+        console.error('Zip lookup error:', error);
+      }
+    }
+  };
+
   const handleCitySearch = (value) => {
     setCityInput(value);
-    
+
     // Clear previous timeout
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }
-    
+
     // If it's a number, treat as ZIP code
     if (/^\d+$/.test(value)) {
       setForm({...form, location: value});
@@ -81,7 +159,7 @@ export default function SimpleInvestmentFinder() {
         console.error('City search error:', error);
       }
     }, 500);
-    
+
     setSearchTimeout(timeout);
   };
 
@@ -136,32 +214,206 @@ export default function SimpleInvestmentFinder() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+    setResults([]);
+    setFilteredResults([]);
+
     try {
+      let zipToUse = form.location;
+      let isUrl = false;
+      let addressForFilter = propertyInput; // This will be used for filtering
+
+      // Handle property mode (address or URL)
+      if (inputMode === 'property' && propertyInput) {
+        // Check if it's a URL
+        if (propertyInput.startsWith('http')) {
+          isUrl = true;
+
+          // Extract address from URL for filtering
+          let extractedAddress = '';
+
+          // Parse address from URL path
+          // Zillow: /homedetails/123-Main-St-City-State-12345/
+          // Redfin: /STATE/City/123-Main-St-12345/
+          // Realtor: /realestateandhomes-detail/123-Main-St_City_State_12345
+
+          const urlPath = propertyInput.split('?')[0]; // Remove query params
+          const pathParts = urlPath.split('/').filter(p => p.length > 0);
+
+          // Find the part that looks like an address (contains hyphens/underscores and digits)
+          for (let part of pathParts) {
+            if ((part.includes('-') || part.includes('_')) && /\d/.test(part)) {
+              // This might be the address part
+              // Convert URL format to readable address
+              let fullAddress = part
+                .replace(/_/g, ' ')  // Replace underscores with spaces
+                .replace(/-/g, ' ')  // Replace hyphens with spaces
+                .replace(/\s+/g, ' ') // Normalize spaces
+                .trim();
+
+              // Check if this looks like an address (has numbers and letters)
+              if (/\d+/.test(fullAddress) && /[a-zA-Z]{2,}/.test(fullAddress)) {
+                // Try to extract just the street address without city/state/ZIP
+                // Pattern: starts with number, ends before city name or state abbreviation
+                const parts = fullAddress.split(' ');
+
+                // Find where the address likely ends (before city or 2-letter state code)
+                let addressParts = [];
+                for (let i = 0; i < parts.length; i++) {
+                  const part = parts[i];
+
+                  // Stop if we hit a 5-digit ZIP code
+                  if (/^\d{5}$/.test(part)) {
+                    break;
+                  }
+
+                  // Stop if we hit a 2-letter state code (likely all caps or title case)
+                  if (i > 0 && /^[A-Z]{2}$/i.test(part) && parts[i-1]?.length > 2) {
+                    break;
+                  }
+
+                  addressParts.push(part);
+                }
+
+                extractedAddress = addressParts.join(' ').trim();
+                console.log('Extracted address from URL:', extractedAddress);
+                addressForFilter = extractedAddress; // Use this for filtering
+                break;
+              }
+            }
+          }
+
+          // Try multiple patterns to extract ZIP code from different listing sites
+          let zipMatch = null;
+
+          // Pattern 1: ZIP followed by underscore or slash (Zillow, Redfin)
+          zipMatch = propertyInput.match(/\/(\d{5})(?:[_\/]|$)/);
+
+          // Pattern 2: ZIP with hyphens or underscores around it (Realtor.com)
+          if (!zipMatch) {
+            zipMatch = propertyInput.match(/[_-]([A-Z]{2})[_-](\d{5})(?:[_\/-]|$)/);
+            if (zipMatch) {
+              zipMatch[1] = zipMatch[2]; // Use the ZIP from second capture group
+            }
+          }
+
+          // Pattern 3: Any 5-digit number in the URL (fallback)
+          if (!zipMatch) {
+            const allNumbers = propertyInput.match(/\b(\d{5})\b/g);
+            if (allNumbers && allNumbers.length > 0) {
+              // Take the last 5-digit number (usually the ZIP)
+              zipMatch = [null, allNumbers[allNumbers.length - 1]];
+            }
+          }
+
+          if (zipMatch && zipMatch[1]) {
+            zipToUse = zipMatch[1];
+            setForm({...form, location: zipToUse});
+            console.log('Extracted ZIP from URL:', zipToUse);
+          } else {
+            throw new Error('Could not extract ZIP code from URL. Please ensure the URL contains the property ZIP code.');
+          }
+        } else {
+          // It's an address
+          if (!zipToUse) {
+            try {
+              const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(propertyInput)}&country=USA&format=json&addressdetails=1&limit=1`, {
+                headers: { 'User-Agent': 'LargeKiteCapital/1.0' }
+              });
+              if (response.ok) {
+                const data = await response.json();
+                if (data[0]?.address?.postcode) {
+                  zipToUse = data[0].address.postcode.split('-')[0];
+                  setForm({...form, location: zipToUse});
+                }
+              }
+            } catch (err) {
+              console.error('Failed to get ZIP:', err);
+            }
+          }
+        }
+      }
+
+      if (!zipToUse) {
+        throw new Error('Could not determine location. Please try a different search method.');
+      }
+
       const res = await fetch('/api/investment-properties/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          location: form.location,
-          minPrice: form.minPrice ? Number(form.minPrice) : undefined,
-          maxPrice: form.maxPrice ? Number(form.maxPrice) : undefined,
-          strategy: form.strategy,
-          timeHorizonYears: 5
+          location: zipToUse,
+          minPrice: inputMode === 'city' ? (form.minPrice ? Number(form.minPrice) : undefined) : undefined,
+          maxPrice: inputMode === 'city' ? (form.maxPrice ? Number(form.maxPrice) : undefined) : undefined,
+          strategy: inputMode === 'city' ? form.strategy : 'rental',
+          timeHorizonYears: 5,
+          exactAddress: inputMode === 'property' ? addressForFilter : undefined,
+          propertyUrl: inputMode === 'property' && isUrl ? propertyInput : undefined
         })
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || 'Search failed');
       }
-      
 
-      
-      const newResults = data.results || [];
+      let newResults = data.results || [];
+
+      // For property mode, try to filter to exact match using the address
+      if (inputMode === 'property' && addressForFilter && newResults.length > 1) {
+        const addressLower = addressForFilter.toLowerCase();
+        const streetNumberMatch = addressForFilter.match(/^\d+/);
+        const streetNumber = streetNumberMatch ? streetNumberMatch[0] : '';
+
+        // Normalize apartment/unit numbers for better matching
+        const normalizeAptNumber = (addr: string) => {
+          return addr
+            .replace(/\b(apt|apartment|unit|ste|suite|#)\s*/gi, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+
+        const filtered = newResults.filter((item: any) => {
+          const propAddr = item.property.address?.toLowerCase() || '';
+
+          // Must start with the same street number
+          if (streetNumber && !propAddr.startsWith(streetNumber)) {
+            return false;
+          }
+
+          // Normalize both addresses for comparison
+          const normalizedInput = normalizeAptNumber(addressLower);
+          const normalizedProp = normalizeAptNumber(propAddr);
+
+          // Extract significant words from the input (skip common street type suffixes)
+          const inputWords = normalizedInput.replace(/^\d+[\s,]*/, '').split(/[\s,]+/);
+          const streetWords = inputWords.filter((w: string) =>
+            w.length > 1 &&
+            !['dr', 'st', 'ave', 'rd', 'ln', 'ct', 'pl', 'blvd', 'pkwy', 'drive', 'street', 'avenue', 'road', 'lane', 'court', 'place', 'boulevard', 'parkway'].includes(w)
+          );
+
+          // Count how many significant words match
+          const matches = streetWords.filter((word: string) => normalizedProp.includes(word));
+
+          // For apartment addresses, require all words to match
+          // For regular addresses, require at least the main street name
+          const hasApartment = /\d+\s*[a-z]?\s*$/i.test(addressLower); // ends with a number (apt number)
+          const requiredMatches = hasApartment ? streetWords.length : Math.max(1, streetWords.length - 1);
+
+          return matches.length >= requiredMatches && streetWords.length > 0;
+        });
+
+        if (filtered.length > 0) {
+          newResults = filtered;
+          console.log(`✅ Filtered to ${filtered.length} matching properties for address: ${addressForFilter}`);
+        } else {
+          console.log(`⚠️ No exact matches found for "${addressForFilter}", showing all ${newResults.length} properties in ZIP ${zipToUse}`);
+        }
+      }
+
       setResults(newResults);
       applyFiltersAndSort(newResults);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'An error occurred while searching');
       setResults([]);
       setFilteredResults([]);
@@ -216,183 +468,394 @@ export default function SimpleInvestmentFinder() {
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/">LargeKite<span>Capital Intelligence</span></Link>
+          <Link href="/">LargeKite<span> Capital Intelligence</span></Link>
         </div>
+        <nav className="links">
+          <Link href="/#how-it-works">How It Works</Link>
+          <Link href="/#methodology">Methodology</Link>
+          <Link href="/#faq">FAQ</Link>
+          <Link href="/" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px' }}>Back to Home</Link>
+          <button className="hamburger" aria-label="Menu">☰</button>
+        </nav>
       </header>
+
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%)',
+        padding: '48px 20px'
+      }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Page Header */}
+          <div style={{ marginBottom: '40px' }}>
+            <h1 style={{
+              margin: '0 0 12px 0',
+              color: '#0f172a',
+              fontSize: '36px',
+              fontWeight: '700',
+              letterSpacing: '-0.025em'
+            }}>
+              Investment Property Analyzer
+            </h1>
+            <p style={{
+              margin: 0,
+              color: '#64748b',
+              fontSize: '18px',
+              fontWeight: '400',
+              maxWidth: '600px'
+            }}>
+              Make data-driven investment decisions with comprehensive property analysis
+            </p>
+          </div>
       
-      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0, color: '#1f2937' }}>Investment Property Finder</h1>
-        <div style={{ 
-          background: '#eff6ff', 
-          padding: '12px 16px', 
-          borderRadius: '8px', 
-          border: '1px solid #bfdbfe',
-          fontSize: '13px'
-        }}>
-          <div style={{ color: '#1e40af', fontWeight: '600', marginBottom: '4px' }}>Current Mortgage Rates:</div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div>
-              <span style={{ color: '#1f2937', fontWeight: '700' }}>{mortgageRates.rate30.toFixed(2)}%</span>
-              <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: '4px' }}>30-yr</span>
-            </div>
-            <div>
-              <span style={{ color: '#1f2937', fontWeight: '700' }}>{mortgageRates.rate15.toFixed(2)}%</span>
-              <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: '4px' }}>15-yr</span>
-            </div>
+      {/* Search Form */}
+      <form onSubmit={handleSubmit} style={{
+        background: 'white',
+        padding: '32px',
+        borderRadius: '16px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.05)',
+        marginBottom: '32px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <div style={{ marginBottom: '24px' }}>
+          <h2 style={{
+            margin: '0 0 8px 0',
+            color: '#1e293b',
+            fontSize: '20px',
+            fontWeight: '600'
+          }}>
+            Search Properties
+          </h2>
+          <p style={{
+            margin: 0,
+            color: '#64748b',
+            fontSize: '14px'
+          }}>
+            Enter location and criteria to find investment opportunities
+          </p>
+        </div>
+
+        {/* Input Mode Selector */}
+        <div style={{ marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#1e293b', fontSize: '15px' }}>
+            How would you like to search?
+          </label>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setInputMode('city')}
+              style={{
+                padding: '10px 20px',
+                background: inputMode === 'city' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#f1f5f9',
+                color: inputMode === 'city' ? 'white' : '#475569',
+                border: '1px solid',
+                borderColor: inputMode === 'city' ? '#2563eb' : '#cbd5e1',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              City / ZIP Code
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode('property')}
+              style={{
+                padding: '10px 20px',
+                background: inputMode === 'property' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#f1f5f9',
+                color: inputMode === 'property' ? 'white' : '#475569',
+                border: '1px solid',
+                borderColor: inputMode === 'property' ? '#2563eb' : '#cbd5e1',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Specific Property (Address or Link)
+            </button>
           </div>
         </div>
-      </div>
-      
-      <form onSubmit={handleSubmit} style={{ 
-        background: 'white', 
-        padding: '30px', 
-        borderRadius: '12px', 
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        marginBottom: '30px'
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          
-          <div style={{ position: 'relative' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              City or ZIP Code
-            </label>
-            <input
-              type="text"
-              value={cityInput || form.location}
-              onChange={(e) => handleCitySearch(e.target.value)}
-              placeholder="Enter city name or ZIP"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-              onFocus={(e) => {
-                citySuggestions.length > 0 && setShowSuggestions(true);
-                e.target.style.borderColor = '#3b82f6';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e5e7eb';
-                setTimeout(() => setShowSuggestions(false), 200);
-              }}
-            />
-            {showSuggestions && citySuggestions.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                background: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                marginTop: '4px',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: 1000,
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+
+        <div style={{ display: 'grid', gridTemplateColumns: inputMode === 'property' ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
+          {/* Property Input (Address or URL) */}
+          {inputMode === 'property' && (
+            <div style={{ position: 'relative' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: '#334155',
+                fontSize: '14px'
               }}>
-                {citySuggestions.map((suggestion, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => selectCity(suggestion)}
-                    style={{
-                      padding: '10px 16px',
-                      cursor: 'pointer',
-                      borderBottom: idx < citySuggestions.length - 1 ? '1px solid #f3f4f6' : 'none'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                  >
-                    {suggestion.displayName}
-                  </div>
-                ))}
+                Property Address or Listing URL
+              </label>
+              <input
+                type="text"
+                value={propertyInput}
+                onChange={(e) => handlePropertySearch(e.target.value)}
+                placeholder="123 Main St, City, State OR https://www.zillow.com/homedetails/..."
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  background: '#ffffff'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2563eb';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#cbd5e1';
+                  e.target.style.boxShadow = 'none';
+                  setTimeout(() => setShowAddressSuggestions(false), 200);
+                }}
+              />
+              {showAddressSuggestions && addressSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  {addressSuggestions.map((suggestion: any, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectAddress(suggestion)}
+                      style={{
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        borderBottom: idx < addressSuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      {suggestion.display}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>
+                Enter a property address or paste a Zillow/Redfin URL
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Price Range
-            </label>
-            <select
-              onChange={handlePriceRangeChange}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                background: 'white'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              {priceRanges.map((range, idx) => (
-                <option key={idx} value={idx}>{range.label}</option>
-              ))}
-            </select>
-          </div>
+          {/* City/ZIP Input */}
+          {inputMode === 'city' && (
+            <>
+              <div style={{ position: 'relative' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: '#334155',
+                  fontSize: '14px'
+                }}>
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={cityInput || form.location}
+                  onChange={(e) => handleCitySearch(e.target.value)}
+                  placeholder="City name or ZIP code"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    background: '#ffffff'
+                  }}
+                  onFocus={(e) => {
+                    citySuggestions.length > 0 && setShowSuggestions(true);
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#cbd5e1';
+                    e.target.style.boxShadow = 'none';
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                />
+                {showSuggestions && citySuggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '10px',
+                    marginTop: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}>
+                    {citySuggestions.map((suggestion, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => selectCity(suggestion)}
+                        style={{
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          borderBottom: idx < citySuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          fontSize: '14px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      >
+                        {suggestion.displayName}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-              Strategy
-            </label>
-            <select
-              value={form.strategy}
-              onChange={(e) => setForm({...form, strategy: e.target.value})}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                background: 'white'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="rental">Buy & Hold Rental</option>
-              <option value="appreciation">Appreciation</option>
-              <option value="short_term_rental">Short-Term Rental</option>
-            </select>
-          </div>
+          {/* Only show price range and strategy for city mode */}
+          {inputMode === 'city' && (
+            <>
+              <div>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: '#334155',
+                  fontSize: '14px'
+                }}>
+                  Price Range
+                </label>
+                <select
+                  onChange={handlePriceRangeChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#cbd5e1';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  {priceRanges.map((range, idx) => (
+                    <option key={idx} value={idx}>{range.label}</option>
+                  ))}
+                </select>
+              </div>
 
+              <div>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: '#334155',
+                  fontSize: '14px'
+                }}>
+                  Investment Strategy
+                </label>
+                <select
+                  value={form.strategy}
+                  onChange={(e) => setForm({...form, strategy: e.target.value})}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#cbd5e1';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="rental">Buy & Hold Rental</option>
+                  <option value="appreciation">Appreciation</option>
+                  <option value="short_term_rental">Short-Term Rental</option>
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         <button
           type="submit"
-          disabled={loading || !form.location}
+          disabled={loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)}
           style={{
-            marginTop: '20px',
-            padding: '12px 24px',
-            background: (loading || !form.location) ? '#9ca3af' : '#3b82f6',
+            marginTop: '28px',
+            padding: '14px 32px',
+            background: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? '#94a3b8' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
+            borderRadius: '10px',
             fontSize: '16px',
             fontWeight: '600',
-            cursor: (loading || !form.location) ? 'not-allowed' : 'pointer',
-            display: 'flex',
+            cursor: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'not-allowed' : 'pointer',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px',
+            transition: 'all 0.2s',
+            boxShadow: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            if (!loading && ((inputMode === 'city' && form.location) || (inputMode === 'property' && propertyInput))) {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.4)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.3)';
           }}
         >
           {loading && (
             <div style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid transparent',
+              width: '18px',
+              height: '18px',
+              border: '2px solid rgba(255,255,255,0.3)',
               borderTop: '2px solid white',
               borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
+              animation: 'spin 0.8s linear infinite'
             }} />
           )}
-          {loading ? 'Searching...' : 'Find Properties'}
+          {loading ? 'Analyzing...' : (inputMode === 'city' ? 'Find Properties' : 'Analyze This Property')}
         </button>
       </form>
 
@@ -414,43 +877,82 @@ export default function SimpleInvestmentFinder() {
       {results.length > 0 && (
         <div style={{
           background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          marginBottom: '20px'
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          marginBottom: '24px',
+          border: '1px solid #e2e8f0'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, color: '#1f2937' }}>Found {results.length} properties</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 style={{
+                margin: '0 0 4px 0',
+                color: '#1e293b',
+                fontSize: '20px',
+                fontWeight: '600'
+              }}>
+                Investment Opportunities
+              </h3>
+              <p style={{
+                margin: 0,
+                color: '#64748b',
+                fontSize: '14px'
+              }}>
+                {filteredResults.length} {filteredResults.length === 1 ? 'property' : 'properties'} match your criteria
+              </p>
+            </div>
             {selectedForComparison.size > 0 && (
               <button
                 onClick={() => setShowComparison(!showComparison)}
                 style={{
-                  padding: '8px 16px',
-                  background: '#059669',
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '10px',
                   fontSize: '14px',
-                  cursor: 'pointer'
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.3)';
                 }}
               >
-                Compare ({selectedForComparison.size})
+                Compare Selected ({selectedForComparison.size})
               </button>
             )}
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Sort by</label>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: '#475569'
+              }}>
+                Sort by
+              </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px'
+                  padding: '10px 14px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  background: 'white',
+                  cursor: 'pointer'
                 }}
               >
                 <option value="score">Investment Score</option>
@@ -459,18 +961,37 @@ export default function SimpleInvestmentFinder() {
                 <option value="cashOnCash">Cash-on-Cash Return</option>
               </select>
             </div>
-            
+
             <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '600' }}>Min Score</label>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '13px',
+                fontWeight: '500',
+                color: '#475569'
+              }}>
+                Minimum Score: {minScore}
+              </label>
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={minScore}
                 onChange={(e) => setMinScore(Number(e.target.value))}
-                style={{ width: '100%' }}
+                style={{
+                  width: '100%',
+                  height: '6px',
+                  borderRadius: '3px',
+                  outline: 'none'
+                }}
               />
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Score: {minScore}+ (Showing {filteredResults.length})</div>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                marginTop: '6px'
+              }}>
+                Showing {filteredResults.length} of {results.length} properties
+              </div>
             </div>
           </div>
         </div>
@@ -538,169 +1059,260 @@ export default function SimpleInvestmentFinder() {
 
       {/* Property Results */}
       {filteredResults.length > 0 && (
-        <div style={{ display: 'grid', gap: '20px' }}>
+        <div style={{ display: 'grid', gap: '24px' }}>
           {filteredResults.map((item) => (
             <div key={item.property.id} style={{
               background: 'white',
-              padding: '20px',
-              borderRadius: '12px',
-              boxShadow: selectedForComparison.has(item.property.id) ? '0 0 0 2px #059669' : '0 1px 3px rgba(0,0,0,0.1)',
-              display: 'grid',
-              gridTemplateColumns: '200px 1fr auto auto',
-              gap: '20px',
-              alignItems: 'center'
+              padding: '24px',
+              borderRadius: '16px',
+              boxShadow: selectedForComparison.has(item.property.id) ? '0 0 0 2px #059669, 0 4px 12px rgba(0,0,0,0.08)' : '0 2px 8px rgba(0,0,0,0.06)',
+              border: '1px solid #e2e8f0',
+              transition: 'all 0.2s'
             }}>
-              {item.property.imageUrl && (
-                <img 
-                  src={item.property.imageUrl} 
-                  alt="Property"
-                  style={{ width: '200px', height: '120px', objectFit: 'cover', borderRadius: '8px' }}
-                />
-              )}
-              
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>
-                    {item.property.address}
-                  </h3>
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    background: item.score >= 75 ? '#dcfce7' : item.score >= 50 ? '#fef3c7' : '#fee2e2',
-                    color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b'
-                  }}>
-                    {item.score >= 75 ? '⭐ Excellent' : item.score >= 50 ? '✓ Good' : '⚠ Fair'}
-                  </span>
-                </div>
-                <p style={{ margin: '0 0 8px 0', color: '#6b7280', fontSize: '14px' }}>
-                  {item.property.city}, {item.property.state} {item.property.zip}
-                </p>
-                <p style={{ margin: '0', fontSize: '14px', color: '#374151' }}>
-                  {item.property.beds} beds{item.property.baths ? ` • ${item.property.baths} baths` : ''}{item.property.sqft ? ` • ${item.property.sqft.toLocaleString()} sqft` : ''}
-                  {item.property.sqft && item.property.listPrice && (
-                    <span style={{ color: '#6b7280', marginLeft: '8px' }}>
-                      (${Math.round(item.property.listPrice / item.property.sqft)}/sqft)
+              <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', marginBottom: '20px' }}>
+                {item.property.imageUrl && (
+                  <img
+                    src={item.property.imageUrl}
+                    alt="Property"
+                    style={{
+                      width: '240px',
+                      height: '160px',
+                      objectFit: 'cover',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0'
+                    }}
+                  />
+                )}
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: '20px',
+                      color: '#0f172a',
+                      fontWeight: '600',
+                      flex: 1
+                    }}>
+                      {item.property.address}
+                    </h3>
+                    <span style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      background: item.score >= 75 ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : item.score >= 50 ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                      color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b',
+                      border: item.score >= 75 ? '1px solid #bbf7d0' : item.score >= 50 ? '1px solid #fde68a' : '1px solid #fecaca'
+                    }}>
+                      {item.score >= 75 ? 'Excellent' : item.score >= 50 ? 'Good' : 'Fair'}
                     </span>
-                  )}
-                </p>
+                  </div>
+                  <p style={{
+                    margin: '0 0 12px 0',
+                    color: '#64748b',
+                    fontSize: '15px'
+                  }}>
+                    {item.property.city}, {item.property.state} {item.property.zip}
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                    fontSize: '14px',
+                    color: '#475569'
+                  }}>
+                    <span style={{ fontWeight: '500' }}>{item.property.beds} beds</span>
+                    {item.property.baths && <span style={{ fontWeight: '500' }}>{item.property.baths} baths</span>}
+                    {item.property.sqft && <span style={{ fontWeight: '500' }}>{item.property.sqft.toLocaleString()} sqft</span>}
+                    {item.property.sqft && item.property.listPrice && (
+                      <span style={{ color: '#64748b' }}>
+                        ${Math.round(item.property.listPrice / item.property.sqft)}/sqft
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{
+                    marginTop: '16px',
+                    paddingTop: '16px',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}>
+                    <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
+                      ${item.property.listPrice.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                      ${(item.property.listPrice * 0.2).toLocaleString()} down
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '4px' }}>
-                  ${item.property.listPrice.toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '12px' }}>
-                  Down: ${(item.property.listPrice * 0.2).toLocaleString()} • Loan: ${(item.property.listPrice * 0.8).toLocaleString()}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '12px', color: '#f59e0b', display: 'flex', flexDirection: 'column' }} title="Total cash needed to buy: 20% down payment + 3% closing costs">
-                    <span style={{ fontWeight: '600' }}>${((item.property.listPrice * 0.2) + (item.property.listPrice * 0.03)).toLocaleString()}</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Cash to Buy</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#8b5cf6', display: 'flex', flexDirection: 'column' }} title="Estimated monthly mortgage payment (principal + interest)">
-                    <span style={{ fontWeight: '600' }}>${((item.property.listPrice * 0.8 * 0.007)).toLocaleString()}/mo</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Mortgage</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#ec4899', display: 'flex', flexDirection: 'column' }} title="Monthly profit: Rent minus mortgage, taxes, insurance, and maintenance">
-                    <span style={{ fontWeight: '600', color: (item.metrics.cashOnCash * (item.property.listPrice * 0.25) / 12) >= 0 ? '#059669' : '#dc2626' }}>
-                      ${((item.metrics.cashOnCash * (item.property.listPrice * 0.25) / 12)).toLocaleString()}/mo
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Monthly Profit</span>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '12px', color: '#059669', display: 'flex', flexDirection: 'column', position: 'relative' }} title="Annual return on total property value">
-                    <span style={{ fontWeight: '600' }}>{(item.metrics.capRate * 100).toFixed(1)}%</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Return on Value</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#0891b2', display: 'flex', flexDirection: 'column', position: 'relative' }} title="Annual return on your cash invested">
-                    <span style={{ fontWeight: '600' }}>{(item.metrics.cashOnCash * 100).toFixed(1)}%</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Return on Cash</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#7c2d12', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600' }}>${item.metrics.estimatedRent.toLocaleString()}/mo</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Monthly Rent</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#be185d', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600' }}>${item.metrics.annualNOI.toLocaleString()}</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Annual Profit</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#1e40af', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600' }}>${item.metrics.projectedValueYearN.toLocaleString()}</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>Value in 5 Years</span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#166534', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600' }}>{(((item.metrics.projectedValueYearN - item.property.listPrice) / item.property.listPrice) * 100).toFixed(1)}%</span>
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>5yr Gain</span>
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '600', 
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  marginBottom: '8px',
-                  background: item.score >= 75 ? '#dcfce7' : item.score >= 50 ? '#fef3c7' : '#fee2e2',
-                  color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b',
-                  textAlign: 'center'
+              {/* Key Metrics */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '16px',
+                marginBottom: '20px'
+              }}>
+                {/* Investment Score */}
+                <div style={{
+                  background: item.score >= 75 ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : item.score >= 50 ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: item.score >= 75 ? '1px solid #86efac' : item.score >= 50 ? '1px solid #fcd34d' : '1px solid #fca5a5'
                 }}>
-                  Score: {item.score}/100
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Investment Score
+                  </div>
+                  <div style={{
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b'
+                  }}>
+                    {item.score}<span style={{ fontSize: '20px' }}>/100</span>
+                  </div>
                 </div>
-                {item.property.externalUrl && (
-                  <a
-                    href={item.property.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+
+                {/* Cap Rate */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #bae6fd'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Cap Rate
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#0369a1' }}>
+                    {(item.metrics.capRate * 100).toFixed(1)}%
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Annual return on value
+                  </div>
+                </div>
+
+                {/* Cash on Cash */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Cash-on-Cash
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#15803d' }}>
+                    {(item.metrics.cashOnCash * 100).toFixed(1)}%
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Annual return on cash
+                  </div>
+                </div>
+
+                {/* Monthly Rent */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #fde047'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Est. Monthly Rent
+                  </div>
+                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#a16207' }}>
+                    ${item.metrics.estimatedRent.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Projected rental income
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '16px',
+                borderTop: '1px solid #e2e8f0',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {item.property.externalUrl && (
+                    <a
+                      href={item.property.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 20px',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                        color: 'white',
+                        textDecoration: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.3)';
+                      }}
+                    >
+                      View Listing
+                    </a>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => toggleFavorite(item.property.id)}
                     style={{
-                      display: 'inline-block',
-                      padding: '6px 12px',
-                      background: '#3b82f6',
-                      color: 'white',
-                      textDecoration: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '500'
+                      padding: '10px 16px',
+                      background: favorites.has(item.property.id) ? '#dc2626' : '#f1f5f9',
+                      color: favorites.has(item.property.id) ? 'white' : '#475569',
+                      border: '1px solid',
+                      borderColor: favorites.has(item.property.id) ? '#dc2626' : '#cbd5e1',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    View Listing →
-                  </a>
-                )}
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
-                  onClick={() => toggleFavorite(item.property.id)}
-                  style={{
-                    padding: '8px',
-                    background: favorites.has(item.property.id) ? '#dc2626' : '#f3f4f6',
-                    color: favorites.has(item.property.id) ? 'white' : '#374151',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '12px'
-                  }}
-                >
-                  {favorites.has(item.property.id) ? '❤️' : '🤍'}
-                </button>
-                
-                <button
-                  onClick={() => toggleComparison(item.property.id)}
-                  disabled={!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3}
-                  style={{
-                    padding: '8px',
-                    background: selectedForComparison.has(item.property.id) ? '#059669' : '#f3f4f6',
-                    color: selectedForComparison.has(item.property.id) ? 'white' : '#374151',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    opacity: (!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3) ? 0.5 : 1
-                  }}
-                >
-                  {selectedForComparison.has(item.property.id) ? '✓' : '+'}
-                </button>
+                    {favorites.has(item.property.id) ? 'Saved' : 'Save'}
+                  </button>
+
+                  <button
+                    onClick={() => toggleComparison(item.property.id)}
+                    disabled={!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3}
+                    style={{
+                      padding: '10px 16px',
+                      background: selectedForComparison.has(item.property.id) ? '#059669' : '#f1f5f9',
+                      color: selectedForComparison.has(item.property.id) ? 'white' : '#475569',
+                      border: '1px solid',
+                      borderColor: selectedForComparison.has(item.property.id) ? '#059669' : '#cbd5e1',
+                      borderRadius: '10px',
+                      cursor: (!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3) ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      opacity: (!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3) ? 0.5 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {selectedForComparison.has(item.property.id) ? 'Selected' : 'Compare'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -713,6 +1325,7 @@ export default function SimpleInvestmentFinder() {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+        </div>
       </div>
     </>
   );
