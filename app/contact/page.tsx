@@ -10,8 +10,15 @@ export default function ContactPage() {
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/">LargeKite<span>Capital Intelligence</span></Link>
+          <Link href="/">LargeKite<span> Capital Intelligence</span></Link>
         </div>
+        <nav className="links">
+          <Link href="/#how-it-works">How It Works</Link>
+          <Link href="/#methodology">Methodology</Link>
+          <Link href="/#faq">FAQ</Link>
+          <Link href="/tools/investment-property-finder" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px' }}>Start Free Analysis</Link>
+          <button className="hamburger" aria-label="Menu">☰</button>
+        </nav>
       </header>
       
       <main className="section">
