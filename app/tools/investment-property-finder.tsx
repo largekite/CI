@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import type { AreaAnalysis, PropertyAnalysis, ScoredProperty } from '@/app/lib/investment/types';
 
 export default function SimpleInvestmentFinder() {
   const [form, setForm] = useState({
@@ -204,11 +205,61 @@ export default function SimpleInvestmentFinder() {
   const [selectedForComparison, setSelectedForComparison] = useState(new Set());
   const [showComparison, setShowComparison] = useState(false);
   const [mortgageRates, setMortgageRates] = useState({ rate30: 6.5, rate15: 5.8 });
+  const [areaAnalysis, setAreaAnalysis] = useState<AreaAnalysis | 'loading' | 'error' | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, PropertyAnalysis | 'loading' | 'error'>>({});
 
   useEffect(() => {
     // Use static rates since Freddie Mac API has CORS restrictions
     setMortgageRates({ rate30: 6.5, rate15: 5.8 });
   }, []);
+
+  const handleAnalyze = async (item: ScoredProperty) => {
+    const id = item.property.id;
+    // Toggle off if already loaded
+    if (analyses[id] && analyses[id] !== 'loading' && analyses[id] !== 'error') {
+      setAnalyses(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setAnalyses(prev => ({ ...prev, [id]: 'loading' }));
+    try {
+      const res = await fetch('/api/investment-properties/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property: item.property,
+          metrics: item.metrics,
+          score: item.score,
+          strategy: form.strategy,
+          areaContext: typeof areaAnalysis === 'object' && areaAnalysis !== null ? areaAnalysis : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      setAnalyses(prev => ({ ...prev, [id]: data as PropertyAnalysis }));
+    } catch {
+      setAnalyses(prev => ({ ...prev, [id]: 'error' }));
+    }
+  };
+
+  const fetchAreaAnalysis = async (city: string, state: string, zip: string, beds?: number) => {
+    setAreaAnalysis('loading');
+    try {
+      const res = await fetch('/api/investment-properties/market', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city, state, zip, beds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Market analysis failed');
+      setAreaAnalysis(data as AreaAnalysis);
+    } catch {
+      setAreaAnalysis('error');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -413,6 +464,14 @@ export default function SimpleInvestmentFinder() {
 
       setResults(newResults);
       applyFiltersAndSort(newResults);
+
+      // Auto-trigger area analysis once per search using first result's location
+      if (newResults.length > 0) {
+        const first = newResults[0].property;
+        setAreaAnalysis(null); // reset previous area
+        setAnalyses({});       // reset previous property analyses
+        fetchAreaAnalysis(first.city, first.state, first.zip, first.beds);
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred while searching');
       setResults([]);
@@ -510,353 +569,295 @@ export default function SimpleInvestmentFinder() {
       {/* Search Form */}
       <form onSubmit={handleSubmit} style={{
         background: 'white',
-        padding: '32px',
-        borderRadius: '16px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.05)',
+        padding: '28px 32px 32px',
+        borderRadius: '20px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)',
         marginBottom: '32px',
         border: '1px solid #e2e8f0'
       }}>
-        <div style={{ marginBottom: '24px' }}>
-          <h2 style={{
-            margin: '0 0 8px 0',
-            color: '#1e293b',
-            fontSize: '20px',
-            fontWeight: '600'
-          }}>
-            Search Properties
-          </h2>
-          <p style={{
-            margin: 0,
-            color: '#64748b',
-            fontSize: '14px'
-          }}>
-            Enter location and criteria to find investment opportunities
-          </p>
-        </div>
 
-        {/* Input Mode Selector */}
-        <div style={{ marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
-          <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#1e293b', fontSize: '15px' }}>
-            How would you like to search?
-          </label>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setInputMode('city')}
-              style={{
-                padding: '10px 20px',
-                background: inputMode === 'city' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#f1f5f9',
-                color: inputMode === 'city' ? 'white' : '#475569',
-                border: '1px solid',
-                borderColor: inputMode === 'city' ? '#2563eb' : '#cbd5e1',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+        {/* ── Unified Search Input ── */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ position: 'relative' }}>
+            {/* Search icon */}
+            <div style={{
+              position: 'absolute', left: '16px', top: '50%',
+              transform: 'translateY(-50%)', color: '#94a3b8',
+              fontSize: '18px', pointerEvents: 'none', zIndex: 1
+            }}>
+              🔍
+            </div>
+
+            {/* Single input — auto-detects ZIP / city / address / URL */}
+            <input
+              type="text"
+              value={inputMode === 'property' ? propertyInput : (cityInput || form.location)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v.startsWith('http')) {
+                  setInputMode('property');
+                  handlePropertySearch(v);
+                } else if (/^\d/.test(v) && !/\s/.test(v)) {
+                  // Pure digits → treat as ZIP (city mode)
+                  setInputMode('city');
+                  handleCitySearch(v);
+                } else if (/^\d+\s/.test(v)) {
+                  // Starts with a number followed by space → likely an address
+                  setInputMode('property');
+                  handlePropertySearch(v);
+                } else {
+                  setInputMode('city');
+                  handleCitySearch(v);
+                }
               }}
-            >
-              City / ZIP Code
-            </button>
-            <button
-              type="button"
-              onClick={() => setInputMode('property')}
+              placeholder="City, ZIP code, address, or listing URL..."
+              autoComplete="off"
               style={{
-                padding: '10px 20px',
-                background: inputMode === 'property' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#f1f5f9',
-                color: inputMode === 'property' ? 'white' : '#475569',
-                border: '1px solid',
-                borderColor: inputMode === 'property' ? '#2563eb' : '#cbd5e1',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                width: '100%',
+                padding: '16px 16px 16px 48px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '14px',
+                fontSize: '16px',
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                background: '#f8fafc',
+                color: '#0f172a',
+                boxSizing: 'border-box'
               }}
-            >
-              Specific Property (Address or Link)
-            </button>
+              onFocus={(e) => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.background = '#fff';
+                e.target.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.08)';
+                if (inputMode === 'city' && citySuggestions.length > 0) setShowSuggestions(true);
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e2e8f0';
+                e.target.style.background = '#f8fafc';
+                e.target.style.boxShadow = 'none';
+                setTimeout(() => { setShowSuggestions(false); setShowAddressSuggestions(false); }, 200);
+              }}
+            />
+
+            {/* Mode badge — auto-detected */}
+            {(propertyInput || cityInput || form.location) && (
+              <div style={{
+                position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
+                background: inputMode === 'property' ? '#ede9fe' : '#dbeafe',
+                color: inputMode === 'property' ? '#6d28d9' : '#1d4ed8',
+                letterSpacing: '0.03em', userSelect: 'none'
+              }}>
+                {inputMode === 'property'
+                  ? (propertyInput.startsWith('http') ? 'LISTING URL' : 'ADDRESS')
+                  : (/^\d{5}$/.test(form.location) ? 'ZIP CODE' : 'CITY')}
+              </div>
+            )}
+
+            {/* City autocomplete dropdown */}
+            {showSuggestions && citySuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px',
+                zIndex: 1000, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden'
+              }}>
+                {citySuggestions.map((s: any, idx) => (
+                  <div key={idx} onClick={() => selectCity(s)} style={{
+                    padding: '12px 16px', cursor: 'pointer', fontSize: '14px', color: '#1e293b',
+                    borderBottom: idx < citySuggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+                    display: 'flex', alignItems: 'center', gap: '10px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                    <span style={{ color: '#94a3b8', fontSize: '15px' }}>📍</span>
+                    {s.displayName}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Address autocomplete dropdown */}
+            {showAddressSuggestions && addressSuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px',
+                zIndex: 1000, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden'
+              }}>
+                {addressSuggestions.map((s: any, idx) => (
+                  <div key={idx} onClick={() => selectAddress(s)} style={{
+                    padding: '12px 16px', cursor: 'pointer', fontSize: '14px', color: '#1e293b',
+                    borderBottom: idx < addressSuggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+                    display: 'flex', alignItems: 'center', gap: '10px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                    <span style={{ color: '#94a3b8', fontSize: '15px' }}>🏠</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Helper hint */}
+          <div style={{
+            display: 'flex', gap: '20px', marginTop: '10px', flexWrap: 'wrap'
+          }}>
+            {[
+              { icon: '🏙️', text: 'Austin, TX' },
+              { icon: '🔢', text: '90210' },
+              { icon: '🏠', text: '123 Main St, Dallas' },
+              { icon: '🔗', text: 'Zillow / Redfin URL' },
+            ].map(({ icon, text }) => (
+              <span key={text} style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>{icon}</span> {text}
+              </span>
+            ))}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: inputMode === 'property' ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
-          {/* Property Input (Address or URL) */}
-          {inputMode === 'property' && (
-            <div style={{ position: 'relative' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontWeight: '500',
-                color: '#334155',
-                fontSize: '14px'
-              }}>
-                Property Address or Listing URL
-              </label>
-              <input
-                type="text"
-                value={propertyInput}
-                onChange={(e) => handlePropertySearch(e.target.value)}
-                placeholder="123 Main St, City, State OR https://www.zillow.com/homedetails/..."
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  background: '#ffffff'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#2563eb';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#cbd5e1';
-                  e.target.style.boxShadow = 'none';
-                  setTimeout(() => setShowAddressSuggestions(false), 200);
-                }}
-              />
-              {showAddressSuggestions && addressSuggestions.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '10px',
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  zIndex: 1000,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}>
-                  {addressSuggestions.map((suggestion: any, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => selectAddress(suggestion)}
-                      style={{
-                        padding: '12px 16px',
-                        cursor: 'pointer',
-                        borderBottom: idx < addressSuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        fontSize: '14px'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      {suggestion.display}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>
-                Enter a property address or paste a Zillow/Redfin URL
-              </div>
-            </div>
-          )}
-
-          {/* City/ZIP Input */}
-          {inputMode === 'city' && (
-            <>
-              <div style={{ position: 'relative' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: '500',
-                  color: '#334155',
-                  fontSize: '14px'
-                }}>
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={cityInput || form.location}
-                  onChange={(e) => handleCitySearch(e.target.value)}
-                  placeholder="City name or ZIP code"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '10px',
-                    fontSize: '15px',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    background: '#ffffff'
-                  }}
-                  onFocus={(e) => {
-                    citySuggestions.length > 0 && setShowSuggestions(true);
-                    e.target.style.borderColor = '#2563eb';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#cbd5e1';
-                    e.target.style.boxShadow = 'none';
-                    setTimeout(() => setShowSuggestions(false), 200);
-                  }}
-                />
-                {showSuggestions && citySuggestions.length > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '10px',
-                    marginTop: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}>
-                    {citySuggestions.map((suggestion, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => selectCity(suggestion)}
-                        style={{
-                          padding: '12px 16px',
-                          cursor: 'pointer',
-                          borderBottom: idx < citySuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
-                          fontSize: '14px'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                      >
-                        {suggestion.displayName}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Only show price range and strategy for city mode */}
-          {inputMode === 'city' && (
-            <>
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: '500',
-                  color: '#334155',
-                  fontSize: '14px'
-                }}>
-                  Price Range
-                </label>
-                <select
-                  onChange={handlePriceRangeChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '10px',
-                    fontSize: '15px',
-                    outline: 'none',
-                    background: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#2563eb';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#cbd5e1';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  {priceRanges.map((range, idx) => (
-                    <option key={idx} value={idx}>{range.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: '500',
-                  color: '#334155',
-                  fontSize: '14px'
-                }}>
-                  Investment Strategy
-                </label>
-                <select
-                  value={form.strategy}
-                  onChange={(e) => setForm({...form, strategy: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '10px',
-                    fontSize: '15px',
-                    outline: 'none',
-                    background: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#2563eb';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#cbd5e1';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="rental">Buy & Hold Rental</option>
-                  <option value="appreciation">Appreciation</option>
-                  <option value="short_term_rental">Short-Term Rental</option>
-                </select>
-              </div>
-            </>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)}
-          style={{
-            marginTop: '28px',
-            padding: '14px 32px',
-            background: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? '#94a3b8' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            transition: 'all 0.2s',
-            boxShadow: (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.3)'
-          }}
-          onMouseEnter={(e) => {
-            if (!loading && ((inputMode === 'city' && form.location) || (inputMode === 'property' && propertyInput))) {
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.4)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = (loading || (inputMode === 'city' && !form.location) || (inputMode === 'property' && !propertyInput)) ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.3)';
-          }}
-        >
-          {loading && (
+        {/* ── Investment Strategy Cards (city mode only) ── */}
+        {inputMode === 'city' && (
+          <div style={{ marginBottom: '20px' }}>
             <div style={{
-              width: '18px',
-              height: '18px',
-              border: '2px solid rgba(255,255,255,0.3)',
-              borderTop: '2px solid white',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite'
-            }} />
-          )}
-          {loading ? 'Analyzing...' : (inputMode === 'city' ? 'Find Properties' : 'Analyze This Property')}
-        </button>
+              fontSize: '12px', fontWeight: '700', color: '#94a3b8',
+              textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px'
+            }}>
+              Investment Strategy
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {[
+                { value: 'rental',           icon: '🏘️', label: 'Buy & Hold',    sub: 'Steady rental income' },
+                { value: 'appreciation',      icon: '📈', label: 'Appreciation',   sub: 'Long-term value growth' },
+                { value: 'short_term_rental', icon: '🌴', label: 'Short-Term',     sub: 'Airbnb / VRBO' },
+              ].map(({ value, icon, label, sub }) => {
+                const active = form.strategy === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setForm({ ...form, strategy: value })}
+                    style={{
+                      padding: '12px 10px',
+                      background: active ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : '#f8fafc',
+                      border: `2px solid ${active ? '#2563eb' : '#e2e8f0'}`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
+                    <div style={{
+                      fontSize: '13px', fontWeight: '700',
+                      color: active ? '#1d4ed8' : '#334155'
+                    }}>{label}</div>
+                    <div style={{
+                      fontSize: '11px', color: active ? '#3b82f6' : '#94a3b8',
+                      marginTop: '2px'
+                    }}>{sub}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Price Range Pills (city mode only) ── */}
+        {inputMode === 'city' && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{
+              fontSize: '12px', fontWeight: '700', color: '#94a3b8',
+              textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px'
+            }}>
+              Price Range
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {priceRanges.map((range, idx) => {
+                const active = form.minPrice === range.min && form.maxPrice === range.max;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setForm({ ...form, minPrice: range.min, maxPrice: range.max })}
+                    style={{
+                      padding: '7px 14px',
+                      background: active ? '#2563eb' : '#f1f5f9',
+                      color: active ? 'white' : '#475569',
+                      border: `1.5px solid ${active ? '#2563eb' : '#e2e8f0'}`,
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      fontWeight: active ? '700' : '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {range.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Submit Button ── */}
+        {(() => {
+          const isDisabled = loading
+            || (inputMode === 'city' && !form.location)
+            || (inputMode === 'property' && !propertyInput);
+          return (
+            <button
+              type="submit"
+              disabled={isDisabled}
+              style={{
+                width: '100%',
+                padding: '15px 32px',
+                background: isDisabled
+                  ? '#cbd5e1'
+                  : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.2s',
+                boxShadow: isDisabled ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.35)',
+                letterSpacing: '0.01em'
+              }}
+              onMouseEnter={(e) => {
+                if (!isDisabled) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.45)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = isDisabled ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.35)';
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{
+                    width: '18px', height: '18px',
+                    border: '2px solid rgba(255,255,255,0.4)',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%', animation: 'spin 0.8s linear infinite'
+                  }} />
+                  Searching properties...
+                </>
+              ) : inputMode === 'property' ? (
+                '→  Analyze This Property'
+              ) : (
+                '→  Find Investment Properties'
+              )}
+            </button>
+          );
+        })()}
       </form>
 
       {/* Error Display */}
@@ -1054,6 +1055,175 @@ export default function SimpleInvestmentFinder() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Area Market Analysis Panel — auto-loaded after search */}
+      {areaAnalysis !== null && filteredResults.length > 0 && (
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          border: '1px solid #e0e7ff',
+          overflow: 'hidden',
+          marginBottom: '24px',
+          boxShadow: '0 2px 12px rgba(109, 40, 217, 0.08)'
+        }}>
+          {/* Header */}
+          <div style={{
+            background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+            padding: '14px 20px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#e9d5ff', fontSize: '15px' }}>📍</span>
+              <span style={{ color: 'white', fontWeight: '700', fontSize: '14px', letterSpacing: '0.03em' }}>
+                NEIGHBORHOOD & MARKET ANALYSIS
+              </span>
+              {areaAnalysis !== 'loading' && areaAnalysis !== 'error' && (
+                <span style={{
+                  padding: '2px 9px', background: 'rgba(255,255,255,0.15)',
+                  borderRadius: '20px', fontSize: '11px', color: '#e9d5ff', fontWeight: '600'
+                }}>
+                  Live Search
+                </span>
+              )}
+            </div>
+            {areaAnalysis !== 'loading' && areaAnalysis !== 'error' && (
+              <span style={{ color: '#c4b5fd', fontSize: '12px' }}>
+                {filteredResults[0]?.property.city}, {filteredResults[0]?.property.state}
+              </span>
+            )}
+          </div>
+
+          {/* Loading */}
+          {areaAnalysis === 'loading' && (
+            <div style={{
+              padding: '24px', display: 'flex', alignItems: 'center', gap: '16px',
+              background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)'
+            }}>
+              <div style={{
+                width: '26px', height: '26px',
+                border: '3px solid #ddd6fe', borderTop: '3px solid #7c3aed',
+                borderRadius: '50%', animation: 'spin 0.9s linear infinite', flexShrink: 0
+              }} />
+              <div>
+                <div style={{ fontWeight: '600', color: '#6d28d9', fontSize: '14px', marginBottom: '3px' }}>
+                  Researching local market conditions...
+                </div>
+                <div style={{ color: '#7c3aed', fontSize: '13px', opacity: 0.8 }}>
+                  Searching population data, job market, rental rates, and economic trends
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {areaAnalysis === 'error' && (
+            <div style={{
+              padding: '16px 20px', background: '#fef2f2',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px'
+            }}>
+              <div style={{ color: '#dc2626', fontSize: '14px' }}>
+                Market analysis failed. Check PERPLEXITY_API_KEY.
+              </div>
+              <button
+                onClick={() => {
+                  const p = filteredResults[0]?.property;
+                  if (p) fetchAreaAnalysis(p.city, p.state, p.zip, p.beds);
+                }}
+                style={{
+                  padding: '7px 14px', background: '#dc2626', color: 'white',
+                  border: 'none', borderRadius: '8px', fontSize: '13px',
+                  fontWeight: '600', cursor: 'pointer', flexShrink: 0
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Data */}
+          {typeof areaAnalysis === 'object' && areaAnalysis !== null && (() => {
+            const aa = areaAnalysis as AreaAnalysis;
+            return (
+              <div style={{ padding: '20px' }}>
+                {/* Market Data Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                  gap: '12px', marginBottom: '16px'
+                }}>
+                  {[
+                    { icon: '👥', label: 'Population',    value: aa.marketData.populationTrend },
+                    { icon: '💼', label: 'Job Market',     value: aa.marketData.jobMarket },
+                    { icon: '💰', label: 'Median Income',  value: aa.marketData.medianIncome },
+                    { icon: '🏡', label: 'Home Values',    value: aa.marketData.homeValueTrend },
+                    { icon: '🔑', label: 'Rent Trend',     value: aa.marketData.rentTrend },
+                    { icon: '📉', label: 'Vacancy Rate',   value: aa.marketData.vacancyRate },
+                    { icon: '🏗️',  label: 'Development',    value: aa.marketData.developmentActivity },
+                  ].map(({ icon, label, value }) => (
+                    <div key={label} style={{
+                      background: '#f8fafc', borderRadius: '10px',
+                      padding: '13px', border: '1px solid #e2e8f0'
+                    }}>
+                      <div style={{
+                        fontSize: '11px', fontWeight: '600', color: '#64748b',
+                        textTransform: 'uppercase', letterSpacing: '0.5px',
+                        marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px'
+                      }}>
+                        <span>{icon}</span> {label}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: '1.5', fontWeight: '500' }}>
+                        {value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Neighborhood Insights */}
+                {aa.neighborhoodInsights.length > 0 && (
+                  <div style={{
+                    background: '#f0f9ff', borderRadius: '10px',
+                    border: '1px solid #bae6fd', padding: '14px', marginBottom: '14px'
+                  }}>
+                    <div style={{
+                      fontWeight: '700', color: '#0c4a6e', fontSize: '13px',
+                      marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px'
+                    }}>
+                      <span>📍</span> Neighborhood Insights
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                      {aa.neighborhoodInsights.map((s, i) => (
+                        <div key={i} style={{
+                          display: 'flex', gap: '8px', alignItems: 'flex-start',
+                          fontSize: '13px', color: '#0e4f73', lineHeight: '1.5'
+                        }}>
+                          <span style={{ color: '#0ea5e9', flexShrink: 0, marginTop: '2px' }}>→</span>
+                          {s}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Area Outlook */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  borderRadius: '10px', border: '1px solid #ddd6fe', padding: '14px'
+                }}>
+                  <div style={{
+                    fontWeight: '700', color: '#4c1d95', fontSize: '13px',
+                    marginBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px'
+                  }}>
+                    <span>🔭</span> 5-Year Area Outlook
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#5b21b6', lineHeight: '1.7' }}>
+                    {aa.areaOutlook}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1272,6 +1442,59 @@ export default function SimpleInvestmentFinder() {
                       View Listing
                     </a>
                   )}
+
+                  {/* AI Deep Analysis Button */}
+                  <button
+                    onClick={() => handleAnalyze(item)}
+                    disabled={analyses[item.property.id] === 'loading'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 20px',
+                      background: analyses[item.property.id] === 'loading'
+                        ? '#94a3b8'
+                        : typeof analyses[item.property.id] === 'object'
+                        ? 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)'
+                        : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: analyses[item.property.id] === 'loading' ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: analyses[item.property.id] === 'loading' ? 'none' : '0 2px 8px rgba(109, 40, 217, 0.35)'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (analyses[item.property.id] !== 'loading') {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(109, 40, 217, 0.5)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = analyses[item.property.id] === 'loading' ? 'none' : '0 2px 8px rgba(109, 40, 217, 0.35)';
+                    }}
+                  >
+                    {analyses[item.property.id] === 'loading' ? (
+                      <>
+                        <div style={{
+                          width: '14px', height: '14px',
+                          border: '2px solid rgba(255,255,255,0.3)',
+                          borderTop: '2px solid white',
+                          borderRadius: '50%',
+                          animation: 'spin 0.8s linear infinite',
+                          flexShrink: 0
+                        }} />
+                        Analyzing property...
+                      </>
+                    ) : typeof analyses[item.property.id] === 'object' ? (
+                      <> ✦ Analysis Open</>
+                    ) : (
+                      <> ✦ AI Deep Analysis</>
+                    )}
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -1314,6 +1537,240 @@ export default function SimpleInvestmentFinder() {
                   </button>
                 </div>
               </div>
+
+              {/* AI Analysis Loading State */}
+              {analyses[item.property.id] === 'loading' && (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '24px',
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  borderRadius: '12px',
+                  border: '1px solid #ddd6fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <div style={{
+                    width: '28px', height: '28px',
+                    border: '3px solid #ddd6fe',
+                    borderTop: '3px solid #7c3aed',
+                    borderRadius: '50%',
+                    animation: 'spin 0.9s linear infinite',
+                    flexShrink: 0
+                  }} />
+                  <div>
+                    <div style={{ fontWeight: '600', color: '#6d28d9', fontSize: '15px', marginBottom: '4px' }}>
+                      Analyzing this property...
+                    </div>
+                    <div style={{ color: '#7c3aed', fontSize: '13px', opacity: 0.8 }}>
+                      Comparing against local comps, evaluating investment metrics, and building your verdict for {item.property.address}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Analysis Error State */}
+              {analyses[item.property.id] === 'error' && (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px 20px',
+                  background: '#fef2f2',
+                  borderRadius: '12px',
+                  border: '1px solid #fecaca',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ color: '#dc2626', fontSize: '14px', fontWeight: '500' }}>
+                    Analysis failed. Check that PERPLEXITY_API_KEY is set in .env.local and retry.
+                  </div>
+                  <button
+                    onClick={() => handleAnalyze(item)}
+                    style={{
+                      padding: '8px 14px', background: '#dc2626', color: 'white',
+                      border: 'none', borderRadius: '8px', fontSize: '13px',
+                      fontWeight: '600', cursor: 'pointer', flexShrink: 0
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* AI Property Analysis Panel */}
+              {typeof analyses[item.property.id] === 'object' && analyses[item.property.id] !== null && (() => {
+                const analysis = analyses[item.property.id] as PropertyAnalysis;
+                const verdictConfig = {
+                  strong_buy: { label: 'Strong Buy', bg: 'linear-gradient(135deg, #052e16 0%, #14532d 100%)', color: '#bbf7d0' },
+                  buy:         { label: 'Buy',         bg: 'linear-gradient(135deg, #14532d 0%, #166534 100%)', color: '#dcfce7' },
+                  hold:        { label: 'Hold',        bg: 'linear-gradient(135deg, #78350f 0%, #92400e 100%)', color: '#fef3c7' },
+                  pass:        { label: 'Pass',        bg: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', color: '#fee2e2' },
+                };
+                const vc = verdictConfig[analysis.verdict] || verdictConfig.hold;
+
+                return (
+                  <div style={{
+                    marginTop: '20px', borderRadius: '16px',
+                    border: '1px solid #e0e7ff', overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(109, 40, 217, 0.12)'
+                  }}>
+                    {/* Header */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+                      padding: '14px 20px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: '#e9d5ff', fontSize: '15px' }}>✦</span>
+                        <span style={{ color: 'white', fontWeight: '700', fontSize: '14px', letterSpacing: '0.03em' }}>
+                          PROPERTY INVESTMENT ANALYSIS
+                        </span>
+                        <span style={{
+                          padding: '2px 9px', background: 'rgba(255,255,255,0.15)',
+                          borderRadius: '20px', fontSize: '11px', color: '#e9d5ff', fontWeight: '600'
+                        }}>
+                          Live Search
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleAnalyze(item)}
+                        style={{
+                          background: 'rgba(255,255,255,0.15)', border: 'none',
+                          color: 'white', borderRadius: '6px', padding: '4px 10px',
+                          cursor: 'pointer', fontSize: '13px', fontWeight: '600'
+                        }}
+                      >
+                        ✕ Close
+                      </button>
+                    </div>
+
+                    {/* Verdict Banner */}
+                    <div style={{
+                      background: vc.bg, padding: '20px 24px',
+                      display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap'
+                    }}>
+                      <div style={{
+                        padding: '8px 22px', background: 'rgba(255,255,255,0.15)',
+                        borderRadius: '8px', border: '1px solid rgba(255,255,255,0.25)',
+                        fontSize: '22px', fontWeight: '800', color: vc.color, letterSpacing: '0.04em'
+                      }}>
+                        {vc.label.toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ color: vc.color, fontSize: '13px', fontWeight: '500', marginBottom: '4px', opacity: 0.8 }}>
+                          AI Confidence Score
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ color: vc.color, fontSize: '28px', fontWeight: '800' }}>
+                            {analysis.confidenceScore}<span style={{ fontSize: '16px', opacity: 0.7 }}>/100</span>
+                          </div>
+                          <div style={{
+                            flex: 1, height: '6px', background: 'rgba(255,255,255,0.15)',
+                            borderRadius: '3px', minWidth: '80px'
+                          }}>
+                            <div style={{
+                              width: `${analysis.confidenceScore}%`, height: '100%',
+                              background: vc.color, borderRadius: '3px', transition: 'width 0.6s ease'
+                            }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ color: vc.color, fontSize: '14px', lineHeight: '1.6', maxWidth: '500px', opacity: 0.9 }}>
+                        {analysis.summary}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '24px', background: 'white' }}>
+                      {/* Property vs. Market Highlights */}
+                      {analysis.propertyHighlights && analysis.propertyHighlights.length > 0 && (
+                        <div style={{
+                          background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                          borderRadius: '12px', border: '1px solid #ddd6fe',
+                          padding: '18px', marginBottom: '20px'
+                        }}>
+                          <div style={{
+                            fontWeight: '700', color: '#4c1d95', fontSize: '14px',
+                            marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px'
+                          }}>
+                            <span>✦</span> This Property vs. Market
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analysis.propertyHighlights.map((h, i) => (
+                              <div key={i} style={{
+                                display: 'flex', gap: '10px', alignItems: 'flex-start',
+                                fontSize: '13px', color: '#5b21b6', lineHeight: '1.5'
+                              }}>
+                                <span style={{ color: '#7c3aed', flexShrink: 0, fontWeight: '700', marginTop: '1px' }}>◆</span>
+                                {h}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bull + Bear */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '20px', marginBottom: '20px'
+                      }}>
+                        <div style={{
+                          background: '#f0fdf4', borderRadius: '12px',
+                          border: '1px solid #bbf7d0', padding: '20px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '17px' }}>✓</span>
+                            <span style={{ fontWeight: '700', color: '#14532d', fontSize: '15px' }}>Investment Strengths</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {analysis.bullCase.map((pt, i) => (
+                              <div key={i}>
+                                <div style={{ fontWeight: '600', color: '#166534', fontSize: '14px', marginBottom: '3px' }}>{pt.point}</div>
+                                <div style={{ color: '#4b7c5a', fontSize: '13px', lineHeight: '1.5' }}>{pt.evidence}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{
+                          background: '#fef2f2', borderRadius: '12px',
+                          border: '1px solid #fecaca', padding: '20px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '17px' }}>✗</span>
+                            <span style={{ fontWeight: '700', color: '#7f1d1d', fontSize: '15px' }}>Risks & Concerns</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {analysis.bearCase.map((pt, i) => (
+                              <div key={i}>
+                                <div style={{ fontWeight: '600', color: '#991b1b', fontSize: '14px', marginBottom: '3px' }}>{pt.point}</div>
+                                <div style={{ color: '#7c3434', fontSize: '13px', lineHeight: '1.5' }}>{pt.evidence}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 5-Year Property Outlook */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)',
+                        borderRadius: '12px', border: '1px solid #fde047', padding: '20px'
+                      }}>
+                        <div style={{
+                          fontWeight: '700', color: '#713f12', fontSize: '15px',
+                          marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'
+                        }}>
+                          <span>🔭</span> 5-Year Property Outlook
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#78350f', lineHeight: '1.7' }}>
+                          {analysis.fiveYearOutlook}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>
