@@ -1,11 +1,15 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home(){
   return (
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/">LargeKite<span> Capital Intelligence</span></Link>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <Image src="/logo.png" alt="Capital Intelligence" width={36} height={36} style={{ objectFit: 'contain' }} />
+            LargeKite<span> Capital Intelligence</span>
+          </Link>
         </div>
         <nav className="links">
           <Link href="#how-it-works">How It Works</Link>
