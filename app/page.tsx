@@ -11,224 +11,200 @@ export default function Home(){
           <Link href="#how-it-works">How It Works</Link>
           <Link href="#methodology">Methodology</Link>
           <Link href="#faq">FAQ</Link>
-          <Link href="/tools/investment-property-finder" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px' }}>Start Free Analysis</Link>
+          <Link href="/tools/investment-property-finder" className="btn btn-primary btn-sm">Start Free Analysis</Link>
           <button className="hamburger" aria-label="Menu">☰</button>
         </nav>
       </header>
-      
+
       <main>
-        {/* HERO SECTION */}
-        <section className="hero hero-dark">
+        {/* HERO */}
+        <section className="hero">
           <div className="hero-inner">
-            <div className="eyebrow" style={{ color: 'rgba(255,255,255,0.8)' }}>Professional-Grade Analysis</div>
-            <h1>Analyze Any Property Deal in 30 Seconds</h1>
-            <p className="hero-subtitle">CFA-level ROI and cashflow analysis. No spreadsheets. No guesswork.</p>
+            <p className="eyebrow" style={{ marginBottom: '24px' }}>Real Estate Investment Analysis</p>
+            <h1>Analyze any property deal<br/>in under a minute.</h1>
+            <p className="hero-subtitle">
+              Cap rate, cash-on-cash return, and 5-year projections — calculated with the same methodology used by institutional investors. No spreadsheets.
+            </p>
             <div className="hero-ctas">
-              <Link className="btn btn-primary btn-lg" href="/tools/investment-property-finder">Analyze Your First Property Free</Link>
+              <Link className="btn btn-primary btn-lg" href="/tools/investment-property-finder">Analyze a Property Free</Link>
             </div>
-            <div style={{ marginTop: '24px', color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', gap: '32px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <span>✓ Free forever</span>
-              <span>✓ No credit card required</span>
-              <span>✓ Instant results</span>
-            </div>
+            <p style={{ marginTop: '20px', color: '#9ca3af', fontSize: '13px' }}>No credit card required · Instant results · Always free</p>
           </div>
         </section>
 
-        {/* HOW IT WORKS SECTION */}
-        <section className="section section-white" id="how-it-works">
+        {/* HOW IT WORKS */}
+        <section className="section" id="how-it-works">
           <div className="section-inner">
             <h2>How It Works</h2>
-            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '18px', maxWidth: '700px', margin: '0 auto 48px' }}>
-              Get professional-grade property analysis in three simple steps
-            </p>
-            <div className="journey-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px', marginTop: '40px' }}>
-              <div className="step-card">
-                <div className="step-number">1.</div>
-                <h3>Enter Location & Criteria</h3>
-                <p>City, ZIP code, or paste a property listing URL. Set your price range and investment strategy.</p>
+            <p className="section-description">Three steps from property address to investment decision.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden', marginTop: '32px' }}>
+              <div style={{ padding: '32px', background: 'white' }}>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600', letterSpacing: '0.1em', marginBottom: '16px' }}>01</div>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Enter Location & Criteria</h3>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.65' }}>City, ZIP code, or paste a property listing URL. Set your price range and investment strategy.</p>
               </div>
-              <div className="step-card">
-                <div className="step-number">2.</div>
-                <h3>CFA-Level Analysis</h3>
-                <p>Our system calculates cap rate, cash-on-cash return, NOI, and 5-year projections using current market data.</p>
+              <div style={{ padding: '32px', background: 'white', borderLeft: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600', letterSpacing: '0.1em', marginBottom: '16px' }}>02</div>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>CFA-Level Analysis</h3>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.65' }}>Cap rate, cash-on-cash return, NOI, and 5-year projections calculated using current market data.</p>
               </div>
-              <div className="step-card">
-                <div className="step-number">3.</div>
-                <h3>Investment Decision</h3>
-                <p>Get a scored recommendation with transparent calculations you can verify and trust.</p>
+              <div style={{ padding: '32px', background: 'white', borderLeft: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '600', letterSpacing: '0.1em', marginBottom: '16px' }}>03</div>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Investment Decision</h3>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.65' }}>A scored recommendation with transparent calculations you can verify and adjust.</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* SAMPLE REPORT PREVIEW */}
-        <section className="section section-light" id="example">
-          <div className="section-inner">
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <span style={{
-                background: '#fef3c7',
-                color: '#92400e',
-                padding: '6px 16px',
-                borderRadius: '20px',
-                fontSize: '13px',
-                fontWeight: '600',
-                border: '1px solid #fcd34d'
-              }}>
-                SAMPLE REPORT
-              </span>
-            </div>
-            <h2>What You'll Get</h2>
-            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '16px', maxWidth: '600px', margin: '0 auto 40px' }}>
-              Every property analysis includes these key metrics, calculated using current market data
-            </p>
-            <div className="report-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px', marginTop: '32px' }}>
-              <div className="metric-card" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%)', color: 'white', padding: '28px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Cap Rate</div>
-                <div style={{ fontSize: '48px', fontWeight: '700' }}>8.5%</div>
-                <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '12px' }}>Annual return on property value</div>
+        {/* SAMPLE METRICS */}
+        <div style={{ background: '#f9fafb', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
+          <section className="section" id="example" style={{ borderBottom: 'none' }}>
+            <div className="section-inner">
+              <h2>What You'll Get</h2>
+              <p className="section-description">Every analysis includes these metrics, calculated with current market data.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden', marginTop: '32px' }}>
+                <div style={{ background: 'white', padding: '24px' }}>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: '500' }}>Cap Rate</div>
+                  <div style={{ fontSize: '38px', fontWeight: '700', color: '#111827', lineHeight: 1, letterSpacing: '-0.02em' }}>8.5%</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>Annual yield on property value</div>
+                </div>
+                <div style={{ background: 'white', padding: '24px' }}>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: '500' }}>Monthly Cashflow</div>
+                  <div style={{ fontSize: '38px', fontWeight: '700', color: '#16a34a', lineHeight: 1, letterSpacing: '-0.02em' }}>+$520</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>After all expenses</div>
+                </div>
+                <div style={{ background: 'white', padding: '24px' }}>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: '500' }}>Cash-on-Cash</div>
+                  <div style={{ fontSize: '38px', fontWeight: '700', color: '#111827', lineHeight: 1, letterSpacing: '-0.02em' }}>12.3%</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>Annual return on cash invested</div>
+                </div>
+                <div style={{ background: 'white', padding: '24px' }}>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: '500' }}>Investment Score</div>
+                  <div style={{ fontSize: '38px', fontWeight: '700', color: '#111827', lineHeight: 1, letterSpacing: '-0.02em' }}>82<span style={{ fontSize: '20px', color: '#9ca3af', fontWeight: '400' }}>/100</span></div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>Strong buy opportunity</div>
+                </div>
               </div>
-              <div className="metric-card" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', padding: '28px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Monthly Cashflow</div>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: '#15803d' }}>+$520</div>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>After mortgage, taxes & expenses</div>
-              </div>
-              <div className="metric-card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', padding: '28px', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Cash-on-Cash</div>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: '#1e40af' }}>12.3%</div>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>Annual return on cash invested</div>
-              </div>
-              <div className="metric-card" style={{ background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', padding: '28px', borderRadius: '16px', border: '1px solid #86efac' }}>
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Investment Score</div>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: '#166534' }}>82<span style={{ fontSize: '28px' }}>/100</span></div>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '12px' }}>Strong buy opportunity</div>
+              <div style={{ textAlign: 'center', marginTop: '28px' }}>
+                <Link href="/tools/investment-property-finder" className="btn btn-primary">Analyze Your Property</Link>
               </div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '40px' }}>
-              <Link href="/tools/investment-property-finder" className="btn btn-primary btn-lg">Analyze Your Property Now</Link>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-
-
-        {/* METHODOLOGY SECTION */}
-        <section className="section section-white" id="methodology">
+        {/* METHODOLOGY */}
+        <section className="section" id="methodology">
           <div className="section-inner">
             <h2>Our Methodology</h2>
-            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '18px', maxWidth: '700px', margin: '0 auto 48px' }}>
-              Built by CFA charterholders using institutional-grade real estate analysis
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-              <div style={{ background: 'white', padding: '32px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '16px', fontSize: '20px' }}>Cap Rate Calculation</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.6' }}>
-                  Net Operating Income ÷ Property Value. We factor in property taxes, insurance, maintenance (1% annually), and vacancy rates (5%) using local market data.
+            <p className="section-description">Built by CFA charterholders using institutional-grade real estate analysis frameworks.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginTop: '32px' }}>
+              <div style={{ padding: '24px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Cap Rate</h3>
+                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.65', margin: 0 }}>
+                  Net Operating Income ÷ Property Value. We factor in taxes, insurance, maintenance (1% annually), and vacancy (5%) using local market data.
                 </p>
               </div>
-              <div style={{ background: 'white', padding: '32px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '16px', fontSize: '20px' }}>Cash-on-Cash Return</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.6' }}>
-                  Annual cashflow ÷ Total cash invested. Assumes 20% down payment, 6.5% mortgage rate, and calculates true monthly profit after all expenses.
+              <div style={{ padding: '24px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Cash-on-Cash Return</h3>
+                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.65', margin: 0 }}>
+                  Annual cashflow ÷ Total cash invested. Assumes 20% down payment and current mortgage rates, calculating true monthly profit after all expenses.
                 </p>
               </div>
-              <div style={{ background: 'white', padding: '32px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '16px', fontSize: '20px' }}>5-Year Projections</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.6' }}>
-                  Historical appreciation rates for the specific ZIP code, combined with rent growth projections and principal paydown over your holding period.
+              <div style={{ padding: '24px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>5-Year Projections</h3>
+                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.65', margin: 0 }}>
+                  ZIP-specific appreciation rates combined with rent growth projections and principal paydown over your holding period.
                 </p>
               </div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '48px', padding: '32px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
-                <strong style={{ color: '#1e293b' }}>Full Transparency:</strong> All calculations are shown in your report so you can verify our assumptions and adjust them to match your specific situation.
+            <div style={{ marginTop: '16px', padding: '18px 20px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.6' }}>
+                <strong style={{ color: '#374151', fontWeight: '600' }}>Full transparency:</strong> All calculations are shown in your report so you can verify assumptions and adjust them to your situation.
               </p>
             </div>
           </div>
         </section>
 
-        {/* CTA SECTION */}
-        <section className="section section-dark" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a8f 100%)', color: 'white' }}>
-          <div className="section-inner" style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: '36px', marginBottom: '16px' }}>Ready to Make Smarter Investment Decisions?</h2>
-            <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', maxWidth: '600px', margin: '0 auto 32px' }}>
-              Join investors using professional-grade analysis to evaluate properties in seconds, not hours.
+        {/* CTA */}
+        <div style={{ background: '#111827' }}>
+          <div style={{ maxWidth: '980px', margin: '0 auto', padding: '72px 24px', textAlign: 'center' }}>
+            <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: '700', color: 'white', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
+              Ready to analyze your first property?
+            </h2>
+            <p style={{ color: '#9ca3af', fontSize: '16px', margin: '14px auto 32px', lineHeight: '1.65', maxWidth: '480px' }}>
+              Join investors using professional-grade analysis to evaluate properties in seconds.
             </p>
-            <div className="cta-centered" style={{ marginTop: '32px' }}>
-              <Link href="/tools/investment-property-finder" className="btn btn-primary btn-lg" style={{ background: 'white', color: '#1e3a5f', fontSize: '18px', padding: '16px 40px' }}>
-                Start Your Free Analysis Now
-              </Link>
-            </div>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginTop: '20px' }}>
-              No credit card required • Results in 30 seconds • Always free
+            <Link href="/tools/investment-property-finder" className="btn" style={{ background: 'white', color: '#111827', fontWeight: '600', fontSize: '15px', padding: '13px 28px', border: 'none' }}>
+              Start Free Analysis
+            </Link>
+            <p style={{ fontSize: '13px', color: '#4b5563', marginTop: '20px' }}>
+              No credit card required · Always free
             </p>
           </div>
-        </section>
+        </div>
 
-
-
-        {/* FAQ SECTION */}
-        <section className="section section-light" id="faq">
-          <div className="section-inner">
-            <h2>Frequently Asked Questions</h2>
-            <div style={{ maxWidth: '800px', margin: '48px auto 0' }}>
-              <div style={{ marginBottom: '32px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '18px' }}>How accurate is this analysis?</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
-                  We use current market data, historical appreciation rates, and standard real estate metrics used by professional investors. Our calculations are transparent - you can see every assumption and adjust them to match your specific scenario. Think of it as a comprehensive starting point built by CFAs.
-                </p>
-              </div>
-              <div style={{ marginBottom: '32px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '18px' }}>What data sources do you use?</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
-                  We pull property data from public MLS listings, combine it with local market rental rates, property tax records, and historical appreciation data for the specific ZIP code. Mortgage rates are updated regularly to reflect current market conditions.
-                </p>
-              </div>
-              <div style={{ marginBottom: '32px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '18px' }}>Is this really free?</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
-                  Yes, completely free with no credit card required. Our property analyzer will always be free because we believe every investor deserves professional-grade analysis tools.
-                </p>
-              </div>
-              <div style={{ marginBottom: '32px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '18px' }}>Can I trust AI for six-figure decisions?</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
-                  We're not asking you to trust AI blindly. Every calculation is shown step-by-step so you can verify the math yourself. We're automating the spreadsheet work that investors do manually - the same formulas, just faster. Always do your own due diligence and consult with professionals for final decisions.
-                </p>
-              </div>
-              <div style={{ padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '18px' }}>What makes this better than my spreadsheet?</h3>
-                <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
-                  Speed and accuracy. No more hunting for comparable rents, calculating mortgage payments, or looking up property tax rates. We pull all that data automatically and run CFA-level calculations in seconds. Plus, you can compare multiple properties side-by-side instantly.
-                </p>
+        {/* FAQ */}
+        <div style={{ background: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
+          <section className="section" id="faq" style={{ borderBottom: 'none' }}>
+            <div className="section-inner">
+              <h2>Frequently Asked Questions</h2>
+              <div style={{ maxWidth: '680px', margin: '40px auto 0' }}>
+                <div style={{ paddingBottom: '24px', marginBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#111827', margin: '0 0 10px', fontSize: '15px', fontWeight: '600' }}>How accurate is this analysis?</h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
+                    We use current market data, historical appreciation rates, and standard metrics used by professional investors. All calculations are transparent — you can see every assumption and adjust them to your specific scenario.
+                  </p>
+                </div>
+                <div style={{ paddingBottom: '24px', marginBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#111827', margin: '0 0 10px', fontSize: '15px', fontWeight: '600' }}>What data sources do you use?</h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
+                    Public MLS listings, local rental rates, property tax records, and historical appreciation data for the specific ZIP code. Mortgage rates are updated regularly to reflect current market conditions.
+                  </p>
+                </div>
+                <div style={{ paddingBottom: '24px', marginBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#111827', margin: '0 0 10px', fontSize: '15px', fontWeight: '600' }}>Is this really free?</h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
+                    Yes, completely free with no credit card required. Our property analyzer will always be free because we believe every investor deserves professional-grade analysis tools.
+                  </p>
+                </div>
+                <div style={{ paddingBottom: '24px', marginBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                  <h3 style={{ color: '#111827', margin: '0 0 10px', fontSize: '15px', fontWeight: '600' }}>Can I trust AI for six-figure decisions?</h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
+                    Every calculation is shown step-by-step so you can verify the math yourself. We automate the spreadsheet work investors do manually — the same formulas, just faster. Always consult with professionals for final decisions.
+                  </p>
+                </div>
+                <div>
+                  <h3 style={{ color: '#111827', margin: '0 0 10px', fontSize: '15px', fontWeight: '600' }}>What makes this better than a spreadsheet?</h3>
+                  <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.7', margin: 0 }}>
+                    Speed and completeness. No more hunting for comparable rents or looking up tax rates — we pull all data automatically and run the analysis in seconds. You can also compare multiple properties side-by-side instantly.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
-      
-      <footer className="section" style={{ borderTop: '1px solid var(--line)', marginTop: '0', background: '#f8fafc' }}>
-        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '48px 20px' }}>
-          <div style={{ marginBottom: '32px' }}>
-            <Link href="/tools/investment-property-finder" style={{ color: '#1e293b', textDecoration: 'none', fontSize: '15px', fontWeight: '600' }}>Property Analyzer</Link>
-            {' · '}
-            <Link href="#methodology" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: '14px' }}>Methodology</Link>
-            {' · '}
-            <Link href="#faq" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: '14px' }}>FAQ</Link>
-            {' · '}
-            <Link href="/contact" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: '14px' }}>Contact</Link>
+
+      <footer style={{ borderTop: '1px solid #e5e7eb', background: 'white', padding: '48px 24px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '24px', display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/tools/investment-property-finder" style={{ color: '#374151', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Property Analyzer</Link>
+            <Link href="#methodology" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '14px' }}>Methodology</Link>
+            <Link href="#faq" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '14px' }}>FAQ</Link>
+            <Link href="/contact" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '14px' }}>Contact</Link>
           </div>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
             LargeKite Capital Intelligence
           </div>
-          <p className="tiny" style={{ marginTop: '16px', maxWidth: '800px', margin: '16px auto 0', fontSize: '13px', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: '1.65', maxWidth: '600px', margin: '0 auto 10px' }}>
             Professional real estate analysis tools built by CFA charterholders. CFA Institute does not endorse, promote, or warrant the accuracy or quality of LargeKite Capital Intelligence LLC.
             CFA® and Chartered Financial Analyst® are registered trademarks owned by CFA Institute.
           </p>
-          <p className="tiny" style={{ marginTop: '16px', fontSize: '13px', lineHeight: '1.6', maxWidth: '800px', margin: '16px auto 0' }}>
-            <strong>Disclaimer:</strong> Analysis and projections are for informational purposes only and do not constitute investment advice or a recommendation to buy or sell real estate.
-            Always conduct your own due diligence and consult with qualified professionals before making investment decisions.
+          <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: '1.65', maxWidth: '600px', margin: '0 auto' }}>
+            Analysis and projections are for informational purposes only and do not constitute investment advice.
+            Always conduct due diligence and consult qualified professionals before making investment decisions.
           </p>
-          <p className="tiny" style={{ marginTop: '20px', fontSize: '12px' }}>
+          <p style={{ fontSize: '12px', color: '#d1d5db', marginTop: '20px' }}>
             © 2024 LargeKite Capital Intelligence LLC. All rights reserved.
           </p>
         </div>

@@ -42,7 +42,7 @@ export default function ContactFormClient() {
       <label>Phone<input name="phone" type="tel" placeholder="+1 (___) ___-____" /></label>
       <label>Notes<textarea name="notes" rows={6} placeholder="Goals, context, timing" /></label>
 
-      <button className="btn primary" type="submit" disabled={status === 'sending'}>
+      <button className="btn btn-primary" type="submit" disabled={status === 'sending'}>
         {status === 'sending' ? 'Sending…' : 'Submit'}
       </button>
 

@@ -16,7 +16,7 @@ export default function ContactPage() {
           <Link href="/#how-it-works">How It Works</Link>
           <Link href="/#methodology">Methodology</Link>
           <Link href="/#faq">FAQ</Link>
-          <Link href="/tools/investment-property-finder" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px' }}>Start Free Analysis</Link>
+          <Link href="/tools/investment-property-finder" className="btn btn-primary btn-sm">Start Free Analysis</Link>
           <button className="hamburger" aria-label="Menu">☰</button>
         </nav>
       </header>
