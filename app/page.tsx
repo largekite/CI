@@ -6,9 +6,8 @@ export default function Home(){
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <Image src="/logo.png" alt="Capital Intelligence" width={52} height={52} style={{ objectFit: 'contain' }} />
-            LargeKite<span> Capital Intelligence</span>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Image src="/logo.png" alt="Capital Intelligence" width={80} height={80} style={{ objectFit: 'contain' }} />
           </Link>
         </div>
         <nav className="links">
