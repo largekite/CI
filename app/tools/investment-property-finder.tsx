@@ -533,15 +533,15 @@ export default function SimpleInvestmentFinder() {
           <Link href="/#how-it-works">How It Works</Link>
           <Link href="/#methodology">Methodology</Link>
           <Link href="/#faq">FAQ</Link>
-          <Link href="/" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px' }}>Back to Home</Link>
+          <Link href="/" className="btn btn-primary btn-sm">Back to Home</Link>
           <button className="hamburger" aria-label="Menu">☰</button>
         </nav>
       </header>
 
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%)',
-        padding: '48px 20px'
+        background: '#fff',
+        padding: '40px 20px'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {/* Page Header */}
@@ -569,11 +569,10 @@ export default function SimpleInvestmentFinder() {
       {/* Search Form */}
       <form onSubmit={handleSubmit} style={{
         background: 'white',
-        padding: '28px 32px 32px',
-        borderRadius: '20px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)',
-        marginBottom: '32px',
-        border: '1px solid #e2e8f0'
+        padding: '24px 28px 28px',
+        borderRadius: '10px',
+        marginBottom: '24px',
+        border: '1px solid #e5e7eb'
       }}>
 
         {/* ── Unified Search Input ── */}
@@ -582,10 +581,10 @@ export default function SimpleInvestmentFinder() {
             {/* Search icon */}
             <div style={{
               position: 'absolute', left: '16px', top: '50%',
-              transform: 'translateY(-50%)', color: '#94a3b8',
-              fontSize: '18px', pointerEvents: 'none', zIndex: 1
+              transform: 'translateY(-50%)', color: '#9ca3af',
+              fontSize: '14px', pointerEvents: 'none', zIndex: 1
             }}>
-              🔍
+              ⌕
             </div>
 
             {/* Single input — auto-detects ZIP / city / address / URL */}
@@ -614,25 +613,25 @@ export default function SimpleInvestmentFinder() {
               autoComplete="off"
               style={{
                 width: '100%',
-                padding: '16px 16px 16px 48px',
-                border: '2px solid #e2e8f0',
-                borderRadius: '14px',
-                fontSize: '16px',
+                padding: '13px 16px 13px 44px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '15px',
                 outline: 'none',
-                transition: 'border-color 0.2s, box-shadow 0.2s',
-                background: '#f8fafc',
-                color: '#0f172a',
+                transition: 'border-color 0.15s',
+                background: '#f9fafb',
+                color: '#111827',
                 boxSizing: 'border-box'
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#2563eb';
+                e.target.style.borderColor = '#111827';
                 e.target.style.background = '#fff';
-                e.target.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.08)';
+                e.target.style.boxShadow = 'none';
                 if (inputMode === 'city' && citySuggestions.length > 0) setShowSuggestions(true);
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = '#e2e8f0';
-                e.target.style.background = '#f8fafc';
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.background = '#f9fafb';
                 e.target.style.boxShadow = 'none';
                 setTimeout(() => { setShowSuggestions(false); setShowAddressSuggestions(false); }, 200);
               }}
@@ -642,9 +641,9 @@ export default function SimpleInvestmentFinder() {
             {(propertyInput || cityInput || form.location) && (
               <div style={{
                 position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
-                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-                background: inputMode === 'property' ? '#ede9fe' : '#dbeafe',
-                color: inputMode === 'property' ? '#6d28d9' : '#1d4ed8',
+                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '500',
+                background: '#f3f4f6',
+                color: '#9ca3af',
                 letterSpacing: '0.03em', userSelect: 'none'
               }}>
                 {inputMode === 'property'
@@ -668,7 +667,7 @@ export default function SimpleInvestmentFinder() {
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-                    <span style={{ color: '#94a3b8', fontSize: '15px' }}>📍</span>
+                    <span style={{ color: '#9ca3af', fontSize: '13px' }}>→</span>
                     {s.displayName}
                   </div>
                 ))}
@@ -690,7 +689,7 @@ export default function SimpleInvestmentFinder() {
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-                    <span style={{ color: '#94a3b8', fontSize: '15px' }}>🏠</span>
+                    <span style={{ color: '#9ca3af', fontSize: '13px' }}>→</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.display}</span>
                   </div>
                 ))}
@@ -702,14 +701,9 @@ export default function SimpleInvestmentFinder() {
           <div style={{
             display: 'flex', gap: '20px', marginTop: '10px', flexWrap: 'wrap'
           }}>
-            {[
-              { icon: '🏙️', text: 'Austin, TX' },
-              { icon: '🔢', text: '90210' },
-              { icon: '🏠', text: '123 Main St, Dallas' },
-              { icon: '🔗', text: 'Zillow / Redfin URL' },
-            ].map(({ icon, text }) => (
-              <span key={text} style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>{icon}</span> {text}
+            {['Austin, TX', '90210', '123 Main St, Dallas', 'Zillow / Redfin URL'].map((text) => (
+              <span key={text} style={{ fontSize: '12px', color: '#9ca3af' }}>
+                {text}
               </span>
             ))}
           </div>
@@ -738,21 +732,21 @@ export default function SimpleInvestmentFinder() {
                     onClick={() => setForm({ ...form, strategy: value })}
                     style={{
                       padding: '12px 10px',
-                      background: active ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : '#f8fafc',
-                      border: `2px solid ${active ? '#2563eb' : '#e2e8f0'}`,
-                      borderRadius: '12px',
+                      background: '#f9fafb',
+                      border: `1.5px solid ${active ? '#111827' : '#e5e7eb'}`,
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       textAlign: 'center',
-                      transition: 'all 0.15s'
+                      transition: 'border-color 0.15s'
                     }}
                   >
                     <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
                     <div style={{
-                      fontSize: '13px', fontWeight: '700',
-                      color: active ? '#1d4ed8' : '#334155'
+                      fontSize: '13px', fontWeight: '600',
+                      color: active ? '#111827' : '#4b5563'
                     }}>{label}</div>
                     <div style={{
-                      fontSize: '11px', color: active ? '#3b82f6' : '#94a3b8',
+                      fontSize: '11px', color: '#9ca3af',
                       marginTop: '2px'
                     }}>{sub}</div>
                   </button>
@@ -780,13 +774,13 @@ export default function SimpleInvestmentFinder() {
                     type="button"
                     onClick={() => setForm({ ...form, minPrice: range.min, maxPrice: range.max })}
                     style={{
-                      padding: '7px 14px',
-                      background: active ? '#2563eb' : '#f1f5f9',
-                      color: active ? 'white' : '#475569',
-                      border: `1.5px solid ${active ? '#2563eb' : '#e2e8f0'}`,
+                      padding: '6px 14px',
+                      background: active ? '#111827' : '#f9fafb',
+                      color: active ? 'white' : '#4b5563',
+                      border: `1px solid ${active ? '#111827' : '#e5e7eb'}`,
                       borderRadius: '20px',
                       fontSize: '13px',
-                      fontWeight: active ? '700' : '500',
+                      fontWeight: '400',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                       whiteSpace: 'nowrap'
@@ -811,40 +805,26 @@ export default function SimpleInvestmentFinder() {
               disabled={isDisabled}
               style={{
                 width: '100%',
-                padding: '15px 32px',
-                background: isDisabled
-                  ? '#cbd5e1'
-                  : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                color: 'white',
+                padding: '13px 32px',
+                background: isDisabled ? '#e5e7eb' : '#111827',
+                color: isDisabled ? '#9ca3af' : 'white',
                 border: 'none',
-                borderRadius: '12px',
-                fontSize: '16px',
-                fontWeight: '700',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '500',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '10px',
-                transition: 'all 0.2s',
-                boxShadow: isDisabled ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.35)',
-                letterSpacing: '0.01em'
-              }}
-              onMouseEnter={(e) => {
-                if (!isDisabled) {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.45)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = isDisabled ? 'none' : '0 4px 14px rgba(37, 99, 235, 0.35)';
+                transition: 'background 0.15s'
               }}
             >
               {loading ? (
                 <>
                   <div style={{
-                    width: '18px', height: '18px',
-                    border: '2px solid rgba(255,255,255,0.4)',
+                    width: '16px', height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
                     borderTop: '2px solid white',
                     borderRadius: '50%', animation: 'spin 0.8s linear infinite'
                   }} />
@@ -878,11 +858,10 @@ export default function SimpleInvestmentFinder() {
       {results.length > 0 && (
         <div style={{
           background: 'white',
-          padding: '24px',
-          borderRadius: '16px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          marginBottom: '24px',
-          border: '1px solid #e2e8f0'
+          padding: '20px 24px',
+          borderRadius: '10px',
+          marginBottom: '20px',
+          border: '1px solid #e5e7eb'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
@@ -906,24 +885,14 @@ export default function SimpleInvestmentFinder() {
               <button
                 onClick={() => setShowComparison(!showComparison)}
                 style={{
-                  padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  padding: '9px 18px',
+                  background: '#111827',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '10px',
+                  borderRadius: '7px',
                   fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.3)';
+                  fontWeight: '500',
+                  cursor: 'pointer'
                 }}
               >
                 Compare Selected ({selectedForComparison.size})
@@ -1030,7 +999,7 @@ export default function SimpleInvestmentFinder() {
                       <div style={{ fontSize: '10px', color: '#6b7280' }}>{item.property.beds}bd • {item.property.baths}ba</div>
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', fontSize: '12px' }}>
-                      ${item.property.listPrice.toLocaleString()}
+                      ${item.property.listPrice.toLocaleString('en-US')}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: '#059669', fontSize: '12px' }}>
                       {item.score}
@@ -1042,10 +1011,10 @@ export default function SimpleInvestmentFinder() {
                       {(item.metrics.cashOnCash * 100).toFixed(1)}%
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontSize: '12px' }}>
-                      ${item.metrics.estimatedRent.toLocaleString()}
+                      ${item.metrics.estimatedRent.toLocaleString('en-US')}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontSize: '12px' }}>
-                      ${item.metrics.projectedValueYearN.toLocaleString()}
+                      ${item.metrics.projectedValueYearN.toLocaleString('en-US')}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontSize: '12px' }}>
                       {(((item.metrics.projectedValueYearN - item.property.listPrice) / item.property.listPrice) * 100).toFixed(1)}%
@@ -1062,34 +1031,32 @@ export default function SimpleInvestmentFinder() {
       {areaAnalysis !== null && filteredResults.length > 0 && (
         <div style={{
           background: 'white',
-          borderRadius: '16px',
-          border: '1px solid #e0e7ff',
+          borderRadius: '10px',
+          border: '1px solid #e5e7eb',
           overflow: 'hidden',
-          marginBottom: '24px',
-          boxShadow: '0 2px 12px rgba(109, 40, 217, 0.08)'
+          marginBottom: '20px'
         }}>
           {/* Header */}
           <div style={{
-            background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
-            padding: '14px 20px',
+            background: '#111827',
+            padding: '12px 20px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ color: '#e9d5ff', fontSize: '15px' }}>📍</span>
-              <span style={{ color: 'white', fontWeight: '700', fontSize: '14px', letterSpacing: '0.03em' }}>
-                NEIGHBORHOOD & MARKET ANALYSIS
+              <span style={{ color: 'white', fontWeight: '600', fontSize: '13px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Neighborhood & Market Analysis
               </span>
               {areaAnalysis !== 'loading' && areaAnalysis !== 'error' && (
                 <span style={{
-                  padding: '2px 9px', background: 'rgba(255,255,255,0.15)',
-                  borderRadius: '20px', fontSize: '11px', color: '#e9d5ff', fontWeight: '600'
+                  padding: '2px 9px', background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '20px', fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: '500'
                 }}>
-                  Live Search
+                  Live
                 </span>
               )}
             </div>
             {areaAnalysis !== 'loading' && areaAnalysis !== 'error' && (
-              <span style={{ color: '#c4b5fd', fontSize: '12px' }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
                 {filteredResults[0]?.property.city}, {filteredResults[0]?.property.state}
               </span>
             )}
@@ -1099,18 +1066,18 @@ export default function SimpleInvestmentFinder() {
           {areaAnalysis === 'loading' && (
             <div style={{
               padding: '24px', display: 'flex', alignItems: 'center', gap: '16px',
-              background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)'
+              background: '#f9fafb'
             }}>
               <div style={{
-                width: '26px', height: '26px',
-                border: '3px solid #ddd6fe', borderTop: '3px solid #7c3aed',
-                borderRadius: '50%', animation: 'spin 0.9s linear infinite', flexShrink: 0
+                width: '20px', height: '20px',
+                border: '2px solid #e5e7eb', borderTop: '2px solid #111827',
+                borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0
               }} />
               <div>
-                <div style={{ fontWeight: '600', color: '#6d28d9', fontSize: '14px', marginBottom: '3px' }}>
+                <div style={{ fontWeight: '500', color: '#374151', fontSize: '14px', marginBottom: '3px' }}>
                   Researching local market conditions...
                 </div>
-                <div style={{ color: '#7c3aed', fontSize: '13px', opacity: 0.8 }}>
+                <div style={{ color: '#9ca3af', fontSize: '13px' }}>
                   Searching population data, job market, rental rates, and economic trends
                 </div>
               </div>
@@ -1154,26 +1121,26 @@ export default function SimpleInvestmentFinder() {
                   gap: '12px', marginBottom: '16px'
                 }}>
                   {[
-                    { icon: '👥', label: 'Population',    value: aa.marketData.populationTrend },
-                    { icon: '💼', label: 'Job Market',     value: aa.marketData.jobMarket },
-                    { icon: '💰', label: 'Median Income',  value: aa.marketData.medianIncome },
-                    { icon: '🏡', label: 'Home Values',    value: aa.marketData.homeValueTrend },
-                    { icon: '🔑', label: 'Rent Trend',     value: aa.marketData.rentTrend },
-                    { icon: '📉', label: 'Vacancy Rate',   value: aa.marketData.vacancyRate },
-                    { icon: '🏗️',  label: 'Development',    value: aa.marketData.developmentActivity },
-                  ].map(({ icon, label, value }) => (
+                    { label: 'Population',   value: aa.marketData.populationTrend },
+                    { label: 'Job Market',    value: aa.marketData.jobMarket },
+                    { label: 'Median Income', value: aa.marketData.medianIncome },
+                    { label: 'Home Values',   value: aa.marketData.homeValueTrend },
+                    { label: 'Rent Trend',    value: aa.marketData.rentTrend },
+                    { label: 'Vacancy Rate',  value: aa.marketData.vacancyRate },
+                    { label: 'Development',   value: aa.marketData.developmentActivity },
+                  ].map(({ label, value }) => (
                     <div key={label} style={{
-                      background: '#f8fafc', borderRadius: '10px',
-                      padding: '13px', border: '1px solid #e2e8f0'
+                      background: '#f9fafb', borderRadius: '8px',
+                      padding: '12px', border: '1px solid #e5e7eb'
                     }}>
                       <div style={{
-                        fontSize: '11px', fontWeight: '600', color: '#64748b',
-                        textTransform: 'uppercase', letterSpacing: '0.5px',
-                        marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px'
+                        fontSize: '11px', fontWeight: '500', color: '#9ca3af',
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        marginBottom: '5px'
                       }}>
-                        <span>{icon}</span> {label}
+                        {label}
                       </div>
-                      <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: '1.5', fontWeight: '500' }}>
+                      <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5', fontWeight: '500' }}>
                         {value}
                       </div>
                     </div>
@@ -1183,22 +1150,22 @@ export default function SimpleInvestmentFinder() {
                 {/* Neighborhood Insights */}
                 {aa.neighborhoodInsights.length > 0 && (
                   <div style={{
-                    background: '#f0f9ff', borderRadius: '10px',
-                    border: '1px solid #bae6fd', padding: '14px', marginBottom: '14px'
+                    background: '#f9fafb', borderRadius: '8px',
+                    border: '1px solid #e5e7eb', padding: '14px', marginBottom: '12px'
                   }}>
                     <div style={{
-                      fontWeight: '700', color: '#0c4a6e', fontSize: '13px',
-                      marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px'
+                      fontWeight: '600', color: '#374151', fontSize: '13px',
+                      marginBottom: '10px'
                     }}>
-                      <span>📍</span> Neighborhood Insights
+                      Neighborhood Insights
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                       {aa.neighborhoodInsights.map((s, i) => (
                         <div key={i} style={{
                           display: 'flex', gap: '8px', alignItems: 'flex-start',
-                          fontSize: '13px', color: '#0e4f73', lineHeight: '1.5'
+                          fontSize: '13px', color: '#4b5563', lineHeight: '1.5'
                         }}>
-                          <span style={{ color: '#0ea5e9', flexShrink: 0, marginTop: '2px' }}>→</span>
+                          <span style={{ color: '#9ca3af', flexShrink: 0, marginTop: '2px' }}>—</span>
                           {s}
                         </div>
                       ))}
@@ -1208,16 +1175,16 @@ export default function SimpleInvestmentFinder() {
 
                 {/* Area Outlook */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  borderRadius: '10px', border: '1px solid #ddd6fe', padding: '14px'
+                  background: '#f9fafb',
+                  borderRadius: '8px', border: '1px solid #e5e7eb', padding: '14px'
                 }}>
                   <div style={{
-                    fontWeight: '700', color: '#4c1d95', fontSize: '13px',
-                    marginBottom: '7px', display: 'flex', alignItems: 'center', gap: '6px'
+                    fontWeight: '600', color: '#374151', fontSize: '13px',
+                    marginBottom: '7px'
                   }}>
-                    <span>🔭</span> 5-Year Area Outlook
+                    5-Year Area Outlook
                   </div>
-                  <div style={{ fontSize: '13px', color: '#5b21b6', lineHeight: '1.7' }}>
+                  <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.7' }}>
                     {aa.areaOutlook}
                   </div>
                 </div>
@@ -1234,10 +1201,9 @@ export default function SimpleInvestmentFinder() {
             <div key={item.property.id} style={{
               background: 'white',
               padding: '24px',
-              borderRadius: '16px',
-              boxShadow: selectedForComparison.has(item.property.id) ? '0 0 0 2px #059669, 0 4px 12px rgba(0,0,0,0.08)' : '0 2px 8px rgba(0,0,0,0.06)',
-              border: '1px solid #e2e8f0',
-              transition: 'all 0.2s'
+              borderRadius: '10px',
+              border: selectedForComparison.has(item.property.id) ? '1.5px solid #111827' : '1px solid #e5e7eb',
+              transition: 'border-color 0.15s'
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', marginBottom: '20px' }}>
                 {item.property.imageUrl && (
@@ -1270,9 +1236,9 @@ export default function SimpleInvestmentFinder() {
                       borderRadius: '8px',
                       fontSize: '13px',
                       fontWeight: '600',
-                      background: item.score >= 75 ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : item.score >= 50 ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                      background: '#f9fafb',
                       color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b',
-                      border: item.score >= 75 ? '1px solid #bbf7d0' : item.score >= 50 ? '1px solid #fde68a' : '1px solid #fecaca'
+                      border: '1px solid #e5e7eb'
                     }}>
                       {item.score >= 75 ? 'Excellent' : item.score >= 50 ? 'Good' : 'Fair'}
                     </span>
@@ -1293,7 +1259,7 @@ export default function SimpleInvestmentFinder() {
                   }}>
                     <span style={{ fontWeight: '500' }}>{item.property.beds} beds</span>
                     {item.property.baths && <span style={{ fontWeight: '500' }}>{item.property.baths} baths</span>}
-                    {item.property.sqft && <span style={{ fontWeight: '500' }}>{item.property.sqft.toLocaleString()} sqft</span>}
+                    {item.property.sqft && <span style={{ fontWeight: '500' }}>{item.property.sqft.toLocaleString('en-US')} sqft</span>}
                     {item.property.sqft && item.property.listPrice && (
                       <span style={{ color: '#64748b' }}>
                         ${Math.round(item.property.listPrice / item.property.sqft)}/sqft
@@ -1310,10 +1276,10 @@ export default function SimpleInvestmentFinder() {
                     gap: '16px'
                   }}>
                     <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
-                      ${item.property.listPrice.toLocaleString()}
+                      ${item.property.listPrice.toLocaleString('en-US')}
                     </div>
                     <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      ${(item.property.listPrice * 0.2).toLocaleString()} down
+                      ${(item.property.listPrice * 0.2).toLocaleString('en-US')} down
                     </div>
                   </div>
                 </div>
@@ -1328,73 +1294,72 @@ export default function SimpleInvestmentFinder() {
               }}>
                 {/* Investment Score */}
                 <div style={{
-                  background: item.score >= 75 ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : item.score >= 50 ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                  background: '#f9fafb',
                   padding: '16px',
-                  borderRadius: '12px',
-                  border: item.score >= 75 ? '1px solid #86efac' : item.score >= 50 ? '1px solid #fcd34d' : '1px solid #fca5a5'
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
                     Investment Score
                   </div>
                   <div style={{
-                    fontSize: '32px',
-                    fontWeight: '700',
+                    fontSize: '30px', fontWeight: '700', letterSpacing: '-0.02em',
                     color: item.score >= 75 ? '#166534' : item.score >= 50 ? '#92400e' : '#991b1b'
                   }}>
-                    {item.score}<span style={{ fontSize: '20px' }}>/100</span>
+                    {item.score}<span style={{ fontSize: '18px', color: '#9ca3af', fontWeight: '400' }}>/100</span>
                   </div>
                 </div>
 
                 {/* Cap Rate */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                  background: '#f9fafb',
                   padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid #bae6fd'
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
                     Cap Rate
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#0369a1' }}>
+                  <div style={{ fontSize: '30px', fontWeight: '700', color: '#111827', letterSpacing: '-0.02em' }}>
                     {(item.metrics.capRate * 100).toFixed(1)}%
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     Annual return on value
                   </div>
                 </div>
 
                 {/* Cash on Cash */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                  background: '#f9fafb',
                   padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid #bbf7d0'
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
                     Cash-on-Cash
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#15803d' }}>
+                  <div style={{ fontSize: '30px', fontWeight: '700', color: '#16a34a', letterSpacing: '-0.02em' }}>
                     {(item.metrics.cashOnCash * 100).toFixed(1)}%
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     Annual return on cash
                   </div>
                 </div>
 
                 {/* Monthly Rent */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)',
+                  background: '#f9fafb',
                   padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid #fde047'
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
                     Est. Monthly Rent
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#a16207' }}>
-                    ${item.metrics.estimatedRent.toLocaleString()}
+                  <div style={{ fontSize: '30px', fontWeight: '700', color: '#111827', letterSpacing: '-0.02em' }}>
+                    ${item.metrics.estimatedRent.toLocaleString('en-US')}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                     Projected rental income
                   </div>
                 </div>
@@ -1420,23 +1385,13 @@ export default function SimpleInvestmentFinder() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '10px 20px',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                        padding: '9px 18px',
+                        background: '#111827',
                         color: 'white',
                         textDecoration: 'none',
-                        borderRadius: '10px',
+                        borderRadius: '7px',
                         fontSize: '14px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.3)';
+                        fontWeight: '500'
                       }}
                     >
                       View Listing
@@ -1451,30 +1406,18 @@ export default function SimpleInvestmentFinder() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: '10px 20px',
+                      padding: '9px 18px',
                       background: analyses[item.property.id] === 'loading'
-                        ? '#94a3b8'
+                        ? '#e5e7eb'
                         : typeof analyses[item.property.id] === 'object'
-                        ? 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)'
-                        : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                      color: 'white',
+                        ? '#374151'
+                        : '#111827',
+                      color: analyses[item.property.id] === 'loading' ? '#9ca3af' : 'white',
                       border: 'none',
-                      borderRadius: '10px',
+                      borderRadius: '7px',
                       fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: analyses[item.property.id] === 'loading' ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: analyses[item.property.id] === 'loading' ? 'none' : '0 2px 8px rgba(109, 40, 217, 0.35)'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (analyses[item.property.id] !== 'loading') {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 4px 14px rgba(109, 40, 217, 0.5)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = analyses[item.property.id] === 'loading' ? 'none' : '0 2px 8px rgba(109, 40, 217, 0.35)';
+                      fontWeight: '500',
+                      cursor: analyses[item.property.id] === 'loading' ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {analyses[item.property.id] === 'loading' ? (
@@ -1490,9 +1433,9 @@ export default function SimpleInvestmentFinder() {
                         Analyzing property...
                       </>
                     ) : typeof analyses[item.property.id] === 'object' ? (
-                      <> ✦ Analysis Open</>
+                      <>Analysis Open</>
                     ) : (
-                      <> ✦ AI Deep Analysis</>
+                      <>Deep Analysis</>
                     )}
                   </button>
                 </div>
@@ -1501,12 +1444,12 @@ export default function SimpleInvestmentFinder() {
                   <button
                     onClick={() => toggleFavorite(item.property.id)}
                     style={{
-                      padding: '10px 16px',
-                      background: favorites.has(item.property.id) ? '#dc2626' : '#f1f5f9',
-                      color: favorites.has(item.property.id) ? 'white' : '#475569',
+                      padding: '9px 16px',
+                      background: favorites.has(item.property.id) ? '#111827' : '#f9fafb',
+                      color: favorites.has(item.property.id) ? 'white' : '#4b5563',
                       border: '1px solid',
-                      borderColor: favorites.has(item.property.id) ? '#dc2626' : '#cbd5e1',
-                      borderRadius: '10px',
+                      borderColor: favorites.has(item.property.id) ? '#111827' : '#e5e7eb',
+                      borderRadius: '7px',
                       cursor: 'pointer',
                       fontSize: '13px',
                       fontWeight: '600',
@@ -1520,12 +1463,12 @@ export default function SimpleInvestmentFinder() {
                     onClick={() => toggleComparison(item.property.id)}
                     disabled={!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3}
                     style={{
-                      padding: '10px 16px',
-                      background: selectedForComparison.has(item.property.id) ? '#059669' : '#f1f5f9',
-                      color: selectedForComparison.has(item.property.id) ? 'white' : '#475569',
+                      padding: '9px 16px',
+                      background: selectedForComparison.has(item.property.id) ? '#111827' : '#f9fafb',
+                      color: selectedForComparison.has(item.property.id) ? 'white' : '#4b5563',
                       border: '1px solid',
-                      borderColor: selectedForComparison.has(item.property.id) ? '#059669' : '#cbd5e1',
-                      borderRadius: '10px',
+                      borderColor: selectedForComparison.has(item.property.id) ? '#111827' : '#e5e7eb',
+                      borderRadius: '7px',
                       cursor: (!selectedForComparison.has(item.property.id) && selectedForComparison.size >= 3) ? 'not-allowed' : 'pointer',
                       fontSize: '13px',
                       fontWeight: '600',
@@ -1542,28 +1485,28 @@ export default function SimpleInvestmentFinder() {
               {analyses[item.property.id] === 'loading' && (
                 <div style={{
                   marginTop: '20px',
-                  padding: '24px',
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  borderRadius: '12px',
-                  border: '1px solid #ddd6fe',
+                  padding: '20px 24px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '16px'
                 }}>
                   <div style={{
-                    width: '28px', height: '28px',
-                    border: '3px solid #ddd6fe',
-                    borderTop: '3px solid #7c3aed',
+                    width: '20px', height: '20px',
+                    border: '2px solid #e5e7eb',
+                    borderTop: '2px solid #111827',
                     borderRadius: '50%',
-                    animation: 'spin 0.9s linear infinite',
+                    animation: 'spin 0.8s linear infinite',
                     flexShrink: 0
                   }} />
                   <div>
-                    <div style={{ fontWeight: '600', color: '#6d28d9', fontSize: '15px', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: '500', color: '#374151', fontSize: '14px', marginBottom: '4px' }}>
                       Analyzing this property...
                     </div>
-                    <div style={{ color: '#7c3aed', fontSize: '13px', opacity: 0.8 }}>
-                      Comparing against local comps, evaluating investment metrics, and building your verdict for {item.property.address}
+                    <div style={{ color: '#9ca3af', fontSize: '13px' }}>
+                      Comparing against local comps, evaluating investment metrics for {item.property.address}
                     </div>
                   </div>
                 </div>
@@ -1602,35 +1545,33 @@ export default function SimpleInvestmentFinder() {
               {typeof analyses[item.property.id] === 'object' && analyses[item.property.id] !== null && (() => {
                 const analysis = analyses[item.property.id] as PropertyAnalysis;
                 const verdictConfig = {
-                  strong_buy: { label: 'Strong Buy', bg: 'linear-gradient(135deg, #052e16 0%, #14532d 100%)', color: '#bbf7d0' },
-                  buy:         { label: 'Buy',         bg: 'linear-gradient(135deg, #14532d 0%, #166534 100%)', color: '#dcfce7' },
-                  hold:        { label: 'Hold',        bg: 'linear-gradient(135deg, #78350f 0%, #92400e 100%)', color: '#fef3c7' },
-                  pass:        { label: 'Pass',        bg: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)', color: '#fee2e2' },
+                  strong_buy: { label: 'Strong Buy', bg: '#14532d', color: '#bbf7d0' },
+                  buy:         { label: 'Buy',         bg: '#166534', color: '#dcfce7' },
+                  hold:        { label: 'Hold',        bg: '#92400e', color: '#fef3c7' },
+                  pass:        { label: 'Pass',        bg: '#991b1b', color: '#fee2e2' },
                 };
                 const vc = verdictConfig[analysis.verdict] || verdictConfig.hold;
 
                 return (
                   <div style={{
-                    marginTop: '20px', borderRadius: '16px',
-                    border: '1px solid #e0e7ff', overflow: 'hidden',
-                    boxShadow: '0 4px 20px rgba(109, 40, 217, 0.12)'
+                    marginTop: '20px', borderRadius: '10px',
+                    border: '1px solid #e5e7eb', overflow: 'hidden'
                   }}>
                     {/* Header */}
                     <div style={{
-                      background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
-                      padding: '14px 20px', display: 'flex',
+                      background: '#111827',
+                      padding: '12px 20px', display: 'flex',
                       alignItems: 'center', justifyContent: 'space-between'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ color: '#e9d5ff', fontSize: '15px' }}>✦</span>
-                        <span style={{ color: 'white', fontWeight: '700', fontSize: '14px', letterSpacing: '0.03em' }}>
-                          PROPERTY INVESTMENT ANALYSIS
+                        <span style={{ color: 'white', fontWeight: '600', fontSize: '13px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                          Property Analysis
                         </span>
                         <span style={{
-                          padding: '2px 9px', background: 'rgba(255,255,255,0.15)',
-                          borderRadius: '20px', fontSize: '11px', color: '#e9d5ff', fontWeight: '600'
+                          padding: '2px 9px', background: 'rgba(255,255,255,0.1)',
+                          borderRadius: '20px', fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: '500'
                         }}>
-                          Live Search
+                          Live
                         </span>
                       </div>
                       <button
@@ -1685,23 +1626,23 @@ export default function SimpleInvestmentFinder() {
                       {/* Property vs. Market Highlights */}
                       {analysis.propertyHighlights && analysis.propertyHighlights.length > 0 && (
                         <div style={{
-                          background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                          borderRadius: '12px', border: '1px solid #ddd6fe',
-                          padding: '18px', marginBottom: '20px'
+                          background: '#f9fafb',
+                          borderRadius: '8px', border: '1px solid #e5e7eb',
+                          padding: '16px', marginBottom: '16px'
                         }}>
                           <div style={{
-                            fontWeight: '700', color: '#4c1d95', fontSize: '14px',
-                            marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '7px'
+                            fontWeight: '600', color: '#374151', fontSize: '13px',
+                            marginBottom: '12px'
                           }}>
-                            <span>✦</span> This Property vs. Market
+                            This Property vs. Market
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {analysis.propertyHighlights.map((h, i) => (
                               <div key={i} style={{
                                 display: 'flex', gap: '10px', alignItems: 'flex-start',
-                                fontSize: '13px', color: '#5b21b6', lineHeight: '1.5'
+                                fontSize: '13px', color: '#4b5563', lineHeight: '1.5'
                               }}>
-                                <span style={{ color: '#7c3aed', flexShrink: 0, fontWeight: '700', marginTop: '1px' }}>◆</span>
+                                <span style={{ color: '#9ca3af', flexShrink: 0, marginTop: '1px' }}>—</span>
                                 {h}
                               </div>
                             ))}
@@ -1716,17 +1657,16 @@ export default function SimpleInvestmentFinder() {
                         gap: '20px', marginBottom: '20px'
                       }}>
                         <div style={{
-                          background: '#f0fdf4', borderRadius: '12px',
-                          border: '1px solid #bbf7d0', padding: '20px'
+                          background: '#f0fdf4', borderRadius: '8px',
+                          border: '1px solid #bbf7d0', padding: '18px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <span style={{ fontSize: '17px' }}>✓</span>
-                            <span style={{ fontWeight: '700', color: '#14532d', fontSize: '15px' }}>Investment Strengths</span>
+                          <div style={{ fontWeight: '600', color: '#14532d', fontSize: '13px', marginBottom: '14px' }}>
+                            Investment Strengths
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {analysis.bullCase.map((pt, i) => (
                               <div key={i}>
-                                <div style={{ fontWeight: '600', color: '#166534', fontSize: '14px', marginBottom: '3px' }}>{pt.point}</div>
+                                <div style={{ fontWeight: '600', color: '#166534', fontSize: '13px', marginBottom: '2px' }}>{pt.point}</div>
                                 <div style={{ color: '#4b7c5a', fontSize: '13px', lineHeight: '1.5' }}>{pt.evidence}</div>
                               </div>
                             ))}
@@ -1734,17 +1674,16 @@ export default function SimpleInvestmentFinder() {
                         </div>
 
                         <div style={{
-                          background: '#fef2f2', borderRadius: '12px',
-                          border: '1px solid #fecaca', padding: '20px'
+                          background: '#fef2f2', borderRadius: '8px',
+                          border: '1px solid #fecaca', padding: '18px'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <span style={{ fontSize: '17px' }}>✗</span>
-                            <span style={{ fontWeight: '700', color: '#7f1d1d', fontSize: '15px' }}>Risks & Concerns</span>
+                          <div style={{ fontWeight: '600', color: '#7f1d1d', fontSize: '13px', marginBottom: '14px' }}>
+                            Risks & Concerns
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {analysis.bearCase.map((pt, i) => (
                               <div key={i}>
-                                <div style={{ fontWeight: '600', color: '#991b1b', fontSize: '14px', marginBottom: '3px' }}>{pt.point}</div>
+                                <div style={{ fontWeight: '600', color: '#991b1b', fontSize: '13px', marginBottom: '2px' }}>{pt.point}</div>
                                 <div style={{ color: '#7c3434', fontSize: '13px', lineHeight: '1.5' }}>{pt.evidence}</div>
                               </div>
                             ))}
@@ -1754,16 +1693,16 @@ export default function SimpleInvestmentFinder() {
 
                       {/* 5-Year Property Outlook */}
                       <div style={{
-                        background: 'linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)',
-                        borderRadius: '12px', border: '1px solid #fde047', padding: '20px'
+                        background: '#f9fafb',
+                        borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px'
                       }}>
                         <div style={{
-                          fontWeight: '700', color: '#713f12', fontSize: '15px',
-                          marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px'
+                          fontWeight: '600', color: '#374151', fontSize: '13px',
+                          marginBottom: '8px'
                         }}>
-                          <span>🔭</span> 5-Year Property Outlook
+                          5-Year Property Outlook
                         </div>
-                        <div style={{ fontSize: '14px', color: '#78350f', lineHeight: '1.7' }}>
+                        <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.7' }}>
                           {analysis.fiveYearOutlook}
                         </div>
                       </div>
