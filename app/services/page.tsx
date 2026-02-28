@@ -79,7 +79,7 @@ export default function Services() {
             CFA® and Chartered Financial Analyst® are registered trademarks owned by CFA Institute.
           </p>
           <p className="tiny" style={{ marginTop: '12px' }}>
-            © 2024 LargeKite Capital Intelligence LLC. All rights reserved.
+            © 2025 LargeKite Capital Intelligence LLC. All rights reserved.
           </p>
         </div>
       </footer>

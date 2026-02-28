@@ -209,7 +209,7 @@ export default function Home(){
             Always conduct due diligence and consult qualified professionals before making investment decisions.
           </p>
           <p style={{ fontSize: '12px', color: '#d1d5db', marginTop: '20px' }}>
-            © 2024 LargeKite Capital Intelligence LLC. All rights reserved.
+            © 2025 LargeKite Capital Intelligence LLC. All rights reserved.
           </p>
         </div>
       </footer>
