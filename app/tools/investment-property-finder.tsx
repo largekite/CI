@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { AreaAnalysis, PropertyAnalysis, ScoredProperty } from '@/app/lib/investment/types';
 
 export default function SimpleInvestmentFinder() {
@@ -527,7 +528,9 @@ export default function SimpleInvestmentFinder() {
     <>
       <header className="nav">
         <div className="brand">
-          <Link href="/">LargeKite<span> Capital Intelligence</span></Link>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Image src="/logo.png" alt="Capital Intelligence" width={120} height={120} style={{ objectFit: 'contain' }} />
+          </Link>
         </div>
         <nav className="links">
           <Link href="/#how-it-works">How It Works</Link>
