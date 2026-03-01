@@ -7,7 +7,7 @@ export default function Home(){
       <header className="nav">
         <div className="brand">
           <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <Image src="/logo.png" alt="Capital Intelligence" width={80} height={80} style={{ objectFit: 'contain' }} />
+            <Image src="/logo.png" alt="Capital Intelligence" width={120} height={120} style={{ objectFit: 'contain' }} />
           </Link>
         </div>
         <nav className="links">
@@ -99,7 +99,7 @@ export default function Home(){
         <section className="section" id="methodology">
           <div className="section-inner">
             <h2>Our Methodology</h2>
-            <p className="section-description">Built by CFA charterholders using institutional-grade real estate analysis frameworks.</p>
+            <p className="section-description">Built by CFA charterholders using institutional-grade real estate analysis frameworks — and designed to counteract the psychological biases that derail investor decisions.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginTop: '32px' }}>
               <div style={{ padding: '24px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
                 <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Cap Rate</h3>
@@ -119,10 +119,48 @@ export default function Home(){
                   ZIP-specific appreciation rates combined with rent growth projections and principal paydown over your holding period.
                 </p>
               </div>
+              <div style={{ padding: '24px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Behavioral Bias Checks</h3>
+                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.65', margin: 0 }}>
+                  Every report is stress-tested against the four most costly investor biases — so your score reflects the numbers, not your emotions.
+                </p>
+              </div>
             </div>
+
+            {/* Psychological Factors */}
+            <div style={{ marginTop: '16px', padding: '24px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em' }}>How We Control for Investor Psychology</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Recency Bias</div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.6', margin: 0 }}>
+                    Projections weight 10+ years of historical appreciation, not just the last hot cycle. A market that surged recently doesn't get inflated forward returns.
+                  </p>
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Loss Aversion</div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.6', margin: 0 }}>
+                    Downside scenarios — vacancy spikes, rate increases, maintenance surprises — are modeled explicitly so risk is never hidden behind optimistic defaults.
+                  </p>
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Confirmation Bias</div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.6', margin: 0 }}>
+                    All assumptions are surfaced and editable before the score is shown, preventing you from anchoring on a number that simply confirms a deal you've already decided to like.
+                  </p>
+                </div>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>Mental Accounting</div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.6', margin: 0 }}>
+                    Cashflow, appreciation, and principal paydown are unified into a single total-return figure, so you're never siloed into thinking about "income" and "growth" as separate buckets.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div style={{ marginTop: '16px', padding: '18px 20px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
               <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.6' }}>
-                <strong style={{ color: '#374151', fontWeight: '600' }}>Full transparency:</strong> All calculations are shown in your report so you can verify assumptions and adjust them to your situation.
+                <strong style={{ color: '#374151', fontWeight: '600' }}>Full transparency:</strong> All calculations are shown in your report so you can verify assumptions and adjust them to your situation. Bias flags appear inline wherever a psychological trap is most likely to distort your judgment.
               </p>
             </div>
           </div>

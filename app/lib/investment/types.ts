@@ -58,6 +58,10 @@ export interface InvestmentMetrics {
   cashOnCash: number;
   /** Projected property value at the end of horizon */
   projectedValueYearN: number;
+  /** Annual pre-mortgage-payment cash flow (NOI - annual interest) */
+  annualCashFlow: number;
+  /** Estimated mortgage principal paid down over the holding period */
+  principalPaydown: number;
 }
 
 /**
@@ -109,6 +113,25 @@ export interface AreaAnalysis {
 }
 
 /**
+ * One of the four investor psychology bias checks surfaced per property.
+ */
+export interface BiasCheck {
+  bias: 'recency_bias' | 'loss_aversion' | 'confirmation_bias' | 'mental_accounting';
+  triggered: boolean;
+  flag: string;   // Short headline, e.g. "Recent market surge may inflate projections"
+  note: string;   // Specific implication for this property
+}
+
+/**
+ * Explicit downside scenario numbers to counteract loss aversion blind spots.
+ */
+export interface DownsideScenario {
+  vacancyAt10Pct: string;  // Cashflow impact if vacancy doubles
+  rentDown10Pct: string;   // Cashflow impact if rent is 10% below estimate
+  rateUp1Pct: string;      // Cashflow impact of mortgage rates rising 1%
+}
+
+/**
  * Property-specific investment analysis.
  * Fetched on-demand when user clicks "AI Analysis" on a card.
  * Returned by /api/investment-properties/analyze
@@ -121,7 +144,9 @@ export interface PropertyAnalysis {
   bullCase: AnalysisBulletPoint[];   // 3–5 property-specific investment strengths
   bearCase: AnalysisBulletPoint[];   // 2–4 property-specific risks or concerns
   propertyHighlights: string[];      // 2–4 standout traits of THIS property vs. the market
-  fiveYearOutlook: string;           // Property-level 5-year investment thesis
+  fiveYearOutlook: string;           // Unified 5-year return: cashflow + appreciation + principal paydown
+  biasChecks: BiasCheck[];           // 4 psychological bias checks, each marked triggered or not
+  downsideScenario: DownsideScenario; // Explicit stress-test numbers
   dataSource: 'live_search';
   generatedAt: string;
 }

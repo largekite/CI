@@ -75,6 +75,12 @@ Area Outlook: ${areaContext.areaOutlook}
 `
       : `(No area context provided — use your knowledge of ${property.city}, ${property.state} to fill in comparisons.)`;
 
+    const cashflow5yr = (metrics.annualCashFlow ?? 0) * 5;
+    const appreciationGain = metrics.projectedValueYearN - property.listPrice;
+    const principalPaydown = metrics.principalPaydown ?? 0;
+    const totalReturn5yr = cashflow5yr + appreciationGain + principalPaydown;
+    const cashInvested = Math.round(property.listPrice * 0.25); // 25% down
+
     const userPrompt = `Evaluate this specific investment property and return a property-level analysis.
 ${areaContextBlock}
 === THIS PROPERTY ===
@@ -92,12 +98,17 @@ Estimated Monthly Rent: $${metrics.estimatedRent.toLocaleString()}
 Cap Rate: ${(metrics.capRate * 100).toFixed(2)}%
 Cash-on-Cash Return: ${(metrics.cashOnCash * 100).toFixed(2)}%
 Annual NOI: $${metrics.annualNOI.toLocaleString()}
+Annual Cash Flow (after mortgage interest): $${(metrics.annualCashFlow ?? 0).toLocaleString()}/yr
 Annual Expenses: $${metrics.annualExpenses.toLocaleString()}
 Projected 5-Year Value: $${metrics.projectedValueYearN.toLocaleString()}
+5-Year Appreciation Gain: $${appreciationGain.toLocaleString()}
+5-Year Cumulative Cash Flow: $${cashflow5yr.toLocaleString()}
+5-Year Principal Paydown: $${principalPaydown.toLocaleString()}
+5-Year Total Return (all sources): $${totalReturn5yr.toLocaleString()} on $${cashInvested.toLocaleString()} invested
 Algorithm Score: ${score}/100
 
 === PROPERTY-LEVEL ANALYSIS TASKS ===
-Answer each of the following using specific numbers and comparisons to the area context above:
+Answer each using specific numbers and comparisons to the area context above:
 
 1. How does this property's list price compare to the area median price per sqft and recent comps?
 2. Is the estimated rent of $${metrics.estimatedRent}/mo realistic vs. actual market rents for similar ${property.beds ?? 3}-bed units? Over or under-estimated?
@@ -107,6 +118,21 @@ Answer each of the following using specific numbers and comparisons to the area 
 6. What are 2–4 standout traits that make THIS property better or worse than a typical listing in this ZIP?
 7. What property-specific risks exist beyond the general market risks?
 8. Given the market context and property metrics, what is your investment verdict?
+
+=== PSYCHOLOGICAL BIAS CHECKS ===
+For each of the four biases below, determine if it is triggered for this specific property and market.
+
+RECENCY BIAS: Has this market had unusual appreciation in the past 2–3 years (e.g., >15% cumulative) that may not continue? If so, are the 5-year projections extrapolating a hot cycle rather than the long-run average? Mark triggered=true if the area's recent appreciation significantly exceeds its 10-year historical average.
+
+LOSS AVERSION: Investors tend to underweight downside scenarios. Compute:
+- If vacancy doubles to 10% (from the assumed 5%): what is the new annual cash flow?
+- If rent is 10% below our estimate ($${Math.round(metrics.estimatedRent * 0.9)}/mo instead of $${metrics.estimatedRent}/mo): new annual cash flow?
+- If mortgage rate rises 1%: what is the approximate reduction in annual cash flow?
+Mark triggered=true always — downside scenarios are always relevant.
+
+CONFIRMATION BIAS: Is this a borderline deal where assumptions could easily swing the verdict? If cap rate is within 1% of a verdict threshold OR the rent estimate is critical to whether this is cash-flow positive, mark triggered=true and specify what the investor should independently verify.
+
+MENTAL ACCOUNTING: Investors often evaluate cashflow and appreciation as separate "buckets." Provide a unified 5-year total return statement: starting from $${cashInvested.toLocaleString()} down payment, the total return is $${totalReturn5yr.toLocaleString()} ($${cashflow5yr.toLocaleString()} cash flow + $${appreciationGain.toLocaleString()} appreciation + $${principalPaydown.toLocaleString()} principal paydown). Mark triggered=true if cashflow alone is negative or marginal, because investors who focus only on cashflow may irrationally reject a strong total-return deal.
 
 === OUTPUT FORMAT ===
 Return STRICT JSON (no extra keys, no markdown):
@@ -127,7 +153,38 @@ Return STRICT JSON (no extra keys, no markdown):
     "<one-liner standout fact about THIS property vs. the local market>",
     ...2 to 4 items
   ],
-  "fiveYearOutlook": "<paragraph: given this property's specific characteristics AND the area macro trends, what is the expected 5-year investment trajectory — projected rent growth, appreciation potential, exit liquidity?>",
+  "fiveYearOutlook": "<paragraph: unified 5-year investment thesis — state the total return of $${totalReturn5yr.toLocaleString()} broken down as cashflow + appreciation + principal paydown, then discuss rent growth, appreciation potential, and exit liquidity for this specific property>",
+  "biasChecks": [
+    {
+      "bias": "recency_bias",
+      "triggered": <true|false>,
+      "flag": "<one-line headline, e.g. 'Recent market surge may inflate projections'>",
+      "note": "<1–2 sentences specific to this property and market — cite the recent vs. long-run appreciation rates if triggered>"
+    },
+    {
+      "bias": "loss_aversion",
+      "triggered": true,
+      "flag": "Downside scenarios stress-tested",
+      "note": "<Summarize the three downside impacts: vacancy at 10%, rent -10%, rate +1% — use actual dollar figures>"
+    },
+    {
+      "bias": "confirmation_bias",
+      "triggered": <true|false>,
+      "flag": "<e.g. 'Borderline deal — rent estimate is decisive' or 'Verdict is robust across assumption ranges'>",
+      "note": "<What specific number should the investor independently verify before committing?>"
+    },
+    {
+      "bias": "mental_accounting",
+      "triggered": <true|false>,
+      "flag": "<e.g. 'Negative cashflow masks strong total return' or 'All return sources are positive'>",
+      "note": "<State the unified 5-year total return and each component explicitly>"
+    }
+  ],
+  "downsideScenario": {
+    "vacancyAt10Pct": "<e.g. 'Annual cash flow drops from $X to $Y (-$Z/yr vs. base case)'>",
+    "rentDown10Pct": "<e.g. 'At $X/mo rent, annual NOI falls to $Y and cap rate drops to Z%'>",
+    "rateUp1Pct": "<e.g. 'A 1% rate increase raises annual mortgage cost by ~$X, reducing cash flow to $Y/yr'>"
+  },
   "dataSource": "live_search",
   "generatedAt": "${new Date().toISOString()}"
 }
@@ -172,6 +229,8 @@ Verdict guidelines:
         bearCase: [],
         propertyHighlights: [],
         fiveYearOutlook: 'Analysis data could not be fully structured. Please retry.',
+        biasChecks: [],
+        downsideScenario: { vacancyAt10Pct: '', rentDown10Pct: '', rateUp1Pct: '' },
         dataSource: 'live_search',
         generatedAt: new Date().toISOString(),
       };

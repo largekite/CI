@@ -1694,7 +1694,8 @@ export default function SimpleInvestmentFinder() {
                       {/* 5-Year Property Outlook */}
                       <div style={{
                         background: '#f9fafb',
-                        borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px'
+                        borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px',
+                        marginBottom: '16px'
                       }}>
                         <div style={{
                           fontWeight: '600', color: '#374151', fontSize: '13px',
@@ -1706,6 +1707,80 @@ export default function SimpleInvestmentFinder() {
                           {analysis.fiveYearOutlook}
                         </div>
                       </div>
+
+                      {/* Downside Scenario */}
+                      {analysis.downsideScenario && (analysis.downsideScenario.vacancyAt10Pct || analysis.downsideScenario.rentDown10Pct || analysis.downsideScenario.rateUp1Pct) && (
+                        <div style={{
+                          background: '#fffbeb', borderRadius: '8px',
+                          border: '1px solid #fde68a', padding: '16px', marginBottom: '16px'
+                        }}>
+                          <div style={{ fontWeight: '600', color: '#92400e', fontSize: '13px', marginBottom: '12px' }}>
+                            Downside Stress Test
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analysis.downsideScenario.vacancyAt10Pct && (
+                              <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                                <span style={{ color: '#d97706', flexShrink: 0, fontWeight: '600' }}>Vacancy 10%</span>
+                                <span style={{ color: '#78350f', lineHeight: '1.5' }}>{analysis.downsideScenario.vacancyAt10Pct}</span>
+                              </div>
+                            )}
+                            {analysis.downsideScenario.rentDown10Pct && (
+                              <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                                <span style={{ color: '#d97706', flexShrink: 0, fontWeight: '600' }}>Rent −10%</span>
+                                <span style={{ color: '#78350f', lineHeight: '1.5' }}>{analysis.downsideScenario.rentDown10Pct}</span>
+                              </div>
+                            )}
+                            {analysis.downsideScenario.rateUp1Pct && (
+                              <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                                <span style={{ color: '#d97706', flexShrink: 0, fontWeight: '600' }}>Rate +1%</span>
+                                <span style={{ color: '#78350f', lineHeight: '1.5' }}>{analysis.downsideScenario.rateUp1Pct}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Behavioral Bias Checks */}
+                      {analysis.biasChecks && analysis.biasChecks.length > 0 && (
+                        <div style={{
+                          background: 'white', borderRadius: '8px',
+                          border: '1px solid #e5e7eb', padding: '16px'
+                        }}>
+                          <div style={{ fontWeight: '600', color: '#374151', fontSize: '13px', marginBottom: '12px' }}>
+                            Investor Psychology Checks
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {analysis.biasChecks.map((check, i) => {
+                              const biasLabels: Record<string, string> = {
+                                recency_bias: 'Recency Bias',
+                                loss_aversion: 'Loss Aversion',
+                                confirmation_bias: 'Confirmation Bias',
+                                mental_accounting: 'Mental Accounting',
+                              };
+                              return (
+                                <div key={i} style={{
+                                  display: 'flex', gap: '10px', alignItems: 'flex-start',
+                                  padding: '10px 12px', borderRadius: '6px',
+                                  background: check.triggered ? '#fef9c3' : '#f0fdf4',
+                                  border: `1px solid ${check.triggered ? '#fde047' : '#bbf7d0'}`
+                                }}>
+                                  <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>
+                                    {check.triggered ? '⚠' : '✓'}
+                                  </span>
+                                  <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: check.triggered ? '#854d0e' : '#166534', marginBottom: '2px' }}>
+                                      {biasLabels[check.bias] ?? check.bias} — {check.flag}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: check.triggered ? '#713f12' : '#4b7c5a', lineHeight: '1.5' }}>
+                                      {check.note}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

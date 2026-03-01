@@ -77,6 +77,19 @@ export function computeMetrics(
   const preTaxCashFlow = annualNOI - interestAnnual;
   const cashOnCash = equity > 0 ? preTaxCashFlow / equity : 0;
 
+  // Principal paydown over holding period via amortization formula
+  // remainingBalance = L * ((1+r)^n - (1+r)^k) / ((1+r)^n - 1)  where r=monthly rate, n=360, k=months paid
+  const monthlyRate = assumptions.loanRate / 12;
+  const n = 360; // 30-year mortgage
+  const principalPaydown = loanAmount > 0 && monthlyRate > 0
+    ? (() => {
+        const factor = Math.pow(1 + monthlyRate, n);
+        const kFactor = Math.pow(1 + monthlyRate, horizonYears * 12);
+        const remaining = loanAmount * (factor - kFactor) / (factor - 1);
+        return Math.max(0, Math.round(loanAmount - remaining));
+      })()
+    : 0;
+
   // Appreciation based on strategy
   const baseAppreciation = strategyBaseAppreciation(capRate, { strategy: 'rental' });
   const strategyAdj = strategyBaseAppreciation(capRate, { strategy: 'appreciation' });
@@ -100,6 +113,8 @@ export function computeMetrics(
     capRate,
     cashOnCash,
     projectedValueYearN,
+    annualCashFlow: Math.round(preTaxCashFlow),
+    principalPaydown,
   };
 }
 
